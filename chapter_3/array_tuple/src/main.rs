@@ -1,4 +1,5 @@
 use std::io;
+
 fn main() {
     println!("In this example, you will learn about arrays and tuples in Rust.");
     println!("Type a numbre to continue 1 to array and 2 to tuple");

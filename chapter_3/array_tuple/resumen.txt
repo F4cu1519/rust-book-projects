@@ -1,0 +1,44 @@
+ Diferencias entre Arrays y Tuplas en Rust
+
+ 1. Tipo de datos
+    - Array: todos los elementos deben ser del mismo tipo.
+    - Tupla: puede contener elementos de distintos tipos.
+
+ 2. Tamaño
+    - Array: tamaño fijo en tiempo de compilación (no se puede agrandar ni achicar).
+    - Tupla: tamaño fijo (no se puede cambiar la cantidad de elementos).
+
+ 3. Acceso a elementos
+    - Array: se accede con [] (ej: a[0]).
+    - Tupla: se accede con .indice (ej: t.0).
+
+ 4. Iteración
+    - Array: se puede iterar con for.
+    - Tupla: no se puede iterar directamente.
+
+ 5. Mutabilidad
+    - Array:
+        * Si es mutable (let mut a), se pueden modificar sus valores.
+        * No se puede cambiar el tamaño del array.
+    - Tupla:
+        * Si es mutable (let mut t), se pueden modificar sus valores.
+        * No se puede cambiar el tipo ni la cantidad de elementos.
+
+ 6. Ejemplo de modificación
+    - Array:
+        let mut a = [1, 2, 3];
+        a[0] = 10;        // permitido
+        // a.push(4);     // NO permitido
+
+    - Tupla:
+        let mut t = (1, 2.0, "hola");
+        t.0 = 5;          // permitido
+        // t.1 = "texto"; // NO permitido (tipo distinto)
+
+ 7. Uso típico
+    - Array: datos homogéneos modificables por índice.
+    - Tupla: agrupar datos relacionados con significado fijo.
+
+ 8. Memoria
+    - Tupla: stack, tamaño fijo.
+    - Array: stack, tamaño fijo.
