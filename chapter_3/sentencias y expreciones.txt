@@ -1,0 +1,91 @@
+RUST – SENTENCIAS Y EXPRESIONES (RESUMEN)
+
+¿Qué es una SENTENCIA?
+Una sentencia (statement) es una instrucción que ejecuta una acción pero NO devuelve un valor.
+
+Ejemplos de sentencias:
+
+Declarar una variable
+let x = 5;
+
+Llamar a una función solo por su efecto
+println!("Hola");
+
+Las sentencias siempre terminan con ;.
+
+Se usan cuando:
+
+Declarás variables
+
+Ejecutás acciones
+
+No necesitás un valor de retorno
+
+¿Qué es una EXPRESIÓN?
+Una expresión (expression) evalúa y devuelve un valor.
+
+Ejemplos de expresiones:
+
+5 + 3
+
+x * 2
+
+if / match
+
+Un bloque {} sin ;
+
+En Rust:
+
+Si NO tiene ; → devuelve un valor
+
+Si tiene ; → no devuelve nada
+
+Devolver valores en funciones
+En Rust, la última expresión sin ; se devuelve automáticamente.
+
+Correcto:
+fn suma(a: i32, b: i32) -> i32 {
+a + b
+}
+
+Incorrecto:
+fn suma(a: i32, b: i32) -> i32 {
+a + b;
+}
+
+if y match devuelven valores
+En Rust, if y match son expresiones, no sentencias.
+
+Ejemplo:
+let resultado = if x > 0 {
+1
+} else {
+-1
+};
+
+Todos los caminos deben devolver el mismo tipo.
+
+Regla clave para no equivocarse
+
+Con ; → SENTENCIA → no devuelve nada
+
+Sin ; → EXPRESIÓN → devuelve un valor
+
+Idea clave de Rust
+En Rust:
+
+Casi todo es una expresión
+
+Las funciones devuelven valores usando expresiones, no instrucciones especiales
+
+
+Importante let no devuelve valor pero si pertenece a un bloque del tipo
+
+let y : i32 = {
+    
+    let x = 3;
+    x += 1
+
+}
+
+Lo que se devuelve en este caso es el valor de x que no es una expresión.
