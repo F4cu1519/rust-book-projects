@@ -12,7 +12,7 @@ fn main() {
     io::stdin().read_line(&mut entrada).expect("Failed to read line");
     let decimal : i32 = entrada.trim().parse().expect("Please type a number!");
     
-    let binary = in_binary(decimal);
+    let binary = in_binary(decimal); // dia 6 Al ser un tipo i32 no hay problema al pasarlo, se hace un copy, cosa que no sucederia si fuese un string pues vive en el heap
 
     println!("The value of the decimal is: {decimal}, in binary is: {binary}");
 }

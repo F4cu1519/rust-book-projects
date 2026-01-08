@@ -1,0 +1,217 @@
+RUST – OWNERSHIP (PROPIEDAD DE MEMORIA)
+
+Rust maneja la memoria mediante un sistema llamado OWNERSHIP (propiedad), sin usar Garbage Collector.
+El compilador verifica reglas en tiempo de compilación para garantizar:
+
+    seguridad de memoria
+
+    ausencia de dobles liberaciones
+
+    ausencia de referencias colgantes
+
+    alto rendimiento
+
+No hay costo en tiempo de ejecución.
+
+REGLAS FUNDAMENTALES DE OWNERSHIP
+
+Cada valor en Rust tiene un único propietario (owner).
+
+Solo puede haber un propietario a la vez.
+
+Cuando el propietario sale de su ámbito (scope), el valor se libera automáticamente.
+
+Estas reglas son obligatorias y el compilador no permite violarlas.
+
+STACK (PILA) VS HEAP
+
+STACK (PILA):
+
+    Muy rápida
+
+    Tamaño fijo conocido en tiempo de compilación
+
+    Los datos se copian
+
+    Se libera automáticamente al salir del scope
+
+Ejemplos de tipos que viven en stack:
+
+    i32, i64, u32
+
+    f64
+
+    bool
+
+    char
+
+    tuples de tipos Copy
+
+    arrays de tamaño fijo
+
+HEAP:
+
+    Más flexible pero más lenta
+
+    Tamaño dinámico o desconocido en compilación
+
+    Requiere asignación y liberación manual (Rust lo hace automáticamente con ownership)
+
+    Ejemplos de tipos que usan heap:
+
+    String
+
+    Vec<T>
+
+    HashMap<K, V>
+
+    Box<T>
+
+TIPOS COPY (COPIA IMPLÍCITA)
+
+Los tipos simples implementan el trait Copy.
+Esto significa que al asignarlos o pasarlos a funciones:
+
+se copian bit a bit
+
+el valor original sigue siendo válido
+
+Ejemplo:
+
+    let x = 5;
+    let y = x;
+
+x sigue siendo válido porque se copió el valor.
+
+Regla:
+Si un tipo implementa Copy, NO existe el concepto de move para ese tipo.
+
+STRING Y HEAP
+
+String NO es un tipo primitivo.
+
+Un String se compone de:
+
+    un puntero (stack)
+
+    una longitud (stack)
+
+    una capacidad (stack)
+
+    los datos de texto (heap)
+
+Ejemplo:
+
+let s = String::from("hola");
+
+Estructura conceptual:
+
+STACK:
+puntero -> heap
+len = 4
+cap = 4
+
+HEAP:
+"h" "o" "l" "a"
+
+MOVE (MOVIMIENTO DE OWNERSHIP)
+
+Cuando asignás un String a otra variable:
+
+    let s1 = String::from("hola");
+    let s2 = s1;
+
+NO se copian los datos del heap.
+Rust mueve la propiedad del heap de s1 a s2.
+
+Después del move:
+
+    s1 queda inválido
+
+    s2 es el único propietario
+
+Esto evita el error de doble liberación de memoria.
+
+Intentar usar s1 luego del move provoca error de compilación.
+
+CLONE (COPIA EXPLÍCITA)
+
+Si necesitás duplicar realmente los datos del heap:
+
+    let s2 = s1.clone();
+
+Esto:
+
+    copia los datos del heap
+
+    crea dos Strings independientes
+
+    es más costoso en tiempo y memoria
+
+Clone debe usarse solo cuando realmente se necesita.
+
+SCOPE (ÁMBITO)
+
+Un scope es un bloque de código delimitado por llaves {}.
+
+Ejemplo:
+
+    {
+    let s = String::from("hola");
+    } // aquí s sale de scope y se libera la memoria
+
+Cuando el owner sale del scope:
+
+Rust llama automáticamente a drop() la memoria del heap se libera
+
+STRING LITERAL (&str)
+
+Ejemplo:
+
+let s = "hola";
+
+Características:
+
+    Es un &str (string slice)
+
+    Vive en memoria estática del binario
+
+    No usa heap
+
+    Es inmutable
+
+    Es muy eficiente
+
+Por eso:
+&str no tiene ownership
+String sí tiene ownership
+
+REGLA MENTAL CLAVE PARA EXÁMENES
+
+Si el tipo:
+
+    tiene tamaño fijo -> stack -> Copy
+
+    tiene tamaño dinámico -> heap -> ownership + move
+
+RELACIÓN CON FUNCIONES (INTRODUCCIÓN)
+
+Cuando pasás un valor a una función:
+
+    si es Copy -> se copia
+
+    si es String o Vec -> se mueve
+
+Esto se ve en profundidad en los capítulos siguientes (borrow y references).
+
+OBJETIVO DEL OWNERSHIP
+
+El sistema de ownership permite a Rust:
+
+    no usar garbage collector
+
+    ser tan seguro como lenguajes administrados
+
+    ser tan rápido como C/C++
+
+    detectar errores en compilación, no en ejecución
