@@ -1,0 +1,120 @@
+
+    QUE ES UN STRUCT
+
+Un struct es un tipo de dato personalizado que permite agrupar múltiples valores relacionados bajo un mismo nombre.
+A diferencia de las tuplas, los structs usan nombres de campos, lo que hace el código más claro y legible.
+
+    DEFINICION DE UN STRUCT
+
+Se define usando la palabra clave struct seguida del nombre y los campos.
+
+Cada campo tiene:
+    nombre
+    tipo
+
+Ejemplo conceptual:
+Un struct User puede tener active, username, email y sign_in_count.
+
+    INSTANCIAR UN STRUCT
+
+Para crear una instancia se usan llaves y se asigna un valor a cada campo.
+
+Características importantes:
+
+    El orden de los campos no importa
+
+    Todos los campos deben tener valor
+
+    Se accede a los campos con punto
+
+Ejemplo conceptual:
+user.email
+user.username
+
+    MUTABILIDAD
+
+Si se quiere modificar un campo de un struct:
+
+    La instancia completa debe ser mutable
+
+    No se puede hacer mutable solo un campo
+
+Regla clave:
+Si el struct es inmutable, ninguno de sus campos puede cambiar
+
+    SHORTHAND DE INICIALIZACION
+
+Si el nombre del parámetro y del campo son iguales:
+
+Se puede omitir repetir el nombre
+
+Se escribe solo una vez
+
+Esto hace el código más limpio y legible
+
+    STRUCT UPDATE SYNTAX
+
+Permite crear una nueva instancia basada en otra existente.
+
+Se especifican solo los campos que cambian
+Los demás se copian desde la instancia anterior
+
+Regla importante:
+Si un campo no implementa Copy, el valor se mueve y la instancia original ya no se puede usar
+
+    TUPLE STRUCTS
+
+Son structs con nombre pero sin nombres de campos.
+
+Características:
+
+    Parecidos a tuplas
+
+    Cada tipo es distinto aunque tenga la misma forma
+
+    Se accede por índice
+
+    Útiles cuando querés un tipo distinto pero no necesitás nombres de campos
+
+    
+    UNIT-LIKE STRUCTS
+
+Structs sin ningún campo.
+
+Características:
+
+    No usan llaves ni paréntesis
+
+    Se comportan como el tipo unit ()
+
+    Útiles para implementar traits o marcar tipos
+
+ 
+    OWNERSHIP EN STRUCTS
+
+Por defecto, los structs poseen sus datos.
+
+Por eso se usa:
+
+    String en lugar de &str
+
+Si se usan referencias dentro de un struct:
+
+    Se necesitan lifetimes explícitos
+
+    Esto se explica más adelante en Rust
+
+    
+    IDEAS CLAVE PARA RECORDAR
+
+Struct agrupa datos relacionados
+
+Los campos tienen nombre
+
+Mutabilidad aplica a toda la instancia
+
+La update syntax puede mover valores
+
+String implica ownership
+
+&str requiere lifetimes

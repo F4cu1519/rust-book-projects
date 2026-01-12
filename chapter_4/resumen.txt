@@ -215,3 +215,4 @@ El sistema de ownership permite a Rust:
     ser tan rápido como C/C++
 
     detectar errores en compilación, no en ejecución
+

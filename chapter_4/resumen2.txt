@@ -1,0 +1,150 @@
+RUST – REFERENCES Y BORROWING (CAPÍTULO 4.2)
+Resumen en TXT con TABULACIONES
+
+REFERENCES (REFERENCIAS)
+Definición
+Una referencia permite acceder a un valor SIN tomar ownership.
+Se crea usando &.
+La referencia solo “pide prestado” el valor (borrowing).
+
+Ejemplo básico
+	fn calculate_length(s: &String) -> usize {
+		s.len()
+	}
+
+	La función:
+		- NO es dueña del String
+		- NO libera memoria
+		- Solo lee el valor
+
+Concepto clave
+	Una referencia apunta a un valor que pertenece a otro owner.
+	Cuando la referencia sale de scope, NO se libera la memoria.
+
+
+BORROWING (PRÉSTAMO)
+Definición
+Borrowing es el acto de pasar una referencia en lugar del valor.
+Permite usar datos sin mover ownership.
+
+Consecuencia
+	El owner original sigue siendo válido después de la llamada.
+
+
+REFERENCIAS INMUTABLES (&T)
+Características
+- No permiten modificar el valor
+- Son el tipo de referencia por defecto
+- Se pueden crear múltiples al mismo tiempo
+
+Ejemplo
+	let s = String::from("hola");
+	let r1 = &s;
+	let r2 = &s;
+
+	r1 y r2 pueden coexistir porque solo leen.
+
+
+INTENTAR MODIFICAR CON & (ERROR)
+Código incorrecto
+fn change(s: &String) {
+s.push_str(" mundo"); // ERROR
+}
+
+Motivo
+	Las referencias inmutables NO permiten modificar datos.
+
+
+REFERENCIAS MUTABLES (&mut T)
+Definición
+Una referencia mutable permite modificar el valor prestado.
+
+Requisitos obligatorios
+	- La variable original debe ser mut
+	- La referencia debe ser &mut
+	- La función debe aceptar &mut T
+
+Ejemplo correcto
+	fn change(s: &mut String) {
+		s.push_str(" mundo");
+	}
+
+
+REGLAS CLAVE DE BORROWING (MUY IMPORTANTES)
+Regla 1 – Mutabilidad exclusiva
+Solo puede existir UNA referencia mutable a la vez.
+
+	Incorrecto:
+		let r1 = &mut s;
+		let r2 = &mut s; // ERROR
+
+Regla 2 – No mezclar
+	No puede haber referencias mutables e inmutables al mismo tiempo.
+
+	Incorrecto:
+		let r1 = &s;
+		let r2 = &mut s; // ERROR
+
+Motivo de las reglas
+	Evitar:
+		- data races
+		- estados inconsistentes
+		- lecturas mientras se escribe
+
+
+SCOPE DE LAS REFERENCIAS
+Concepto
+El scope de una referencia dura hasta su ÚLTIMO USO,
+no necesariamente hasta el final del bloque.
+
+Ejemplo válido
+	let r1 = &s;
+	println!("{r1}");
+	let r2 = &mut s; // OK porque r1 ya no se usa
+
+
+DANGLING REFERENCES (REFERENCIAS COLGANTES)
+Definición
+Una referencia que apunta a memoria ya liberada.
+
+Rust lo prohíbe en compilación.
+
+Ejemplo inválido
+	fn dangle() -> &String {
+		let s = String::from("hola");
+		&s // ERROR
+	}
+
+Motivo
+	s se destruye al salir de la función,
+	la referencia quedaría apuntando a nada.
+
+
+RELACIÓN CON OWNERSHIP
+Una referencia:
+- NO tiene ownership
+- NO libera memoria
+- Depende de que el owner siga vivo
+
+Rust garantiza
+	La data siempre vive más que la referencia.
+
+
+REGLAS MENTALES PARA EXÁMENES
+1) &T → leer solamente
+2) &mut T → escribir, pero uno solo
+3) Nunca & y &mut al mismo tiempo
+4) Las referencias nunca sobreviven a su owner
+
+OBJETIVO DEL SISTEMA
+Rust usa references y borrowing para:
+- evitar garbage collector
+- garantizar seguridad de memoria
+- prevenir errores en compilación
+- mantener alto rendimiento
+
+Si querés, el próximo paso puede ser:
+- una hoja resumen SOLO con reglas
+- ejercicios típicos que fallan y por qué
+- conexión directa con lifetimes (cap. 10)
+- ejemplos comparados con C/C++
