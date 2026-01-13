@@ -1,0 +1,79 @@
+RUST - METODOS (RESUMEN)
+
+METODOS
+	- Son funciones asociadas a un tipo (struct, enum, trait).
+	- Se definen dentro de un bloque impl.
+	- Siempre tienen self como primer parámetro.
+	- Se llaman usando la sintaxis: instancia.metodo()
+
+DIFERENCIA ENTRE FUNCION Y METODO
+	Funcion:
+		- Se define fuera del struct.
+		- Recibe el struct como parámetro.
+	Metodo:
+		- Se define en impl Struct.
+		- Usa self para referirse a la instancia.
+		- Mejor organización del código.
+
+SELF
+	- self        -> toma ownership del valor (consume)
+	- &self       -> préstamo inmutable (solo leer)
+	- &mut self   -> préstamo mutable (modificar)
+	- Self        -> alias del tipo del impl (ej: Rectangle)
+
+EJEMPLO BASICO
+	impl Rectangle {
+		fn area(&self) -> u32 {
+			self.width * self.height
+		}
+	}
+
+LLAMADA A METODO
+	- rect.area()
+	- No se pasa rect como parámetro explícito
+	- Rust lo maneja automáticamente
+
+AUTOMATIC REFERENCING (NO HAY ->)
+	- Rust no usa el operador ->
+	- Al llamar un método, Rust agrega & / &mut / * automáticamente
+	- Ejemplo equivalente:
+		p1.distance(&p2)
+		(&p1).distance(&p2)
+
+METODOS CON MAS PARAMETROS
+	- self siempre va primero
+	- Los demás parámetros funcionan como en funciones normales
+	Ejemplo:
+		fn can_hold(&self, other: &Rectangle) -> bool
+
+METODOS Y CAMPOS CON EL MISMO NOMBRE
+	- rect.width   -> campo
+	- rect.width() -> método
+	- Rust distingue por los paréntesis
+
+GETTERS
+	- Métodos que solo devuelven un valor
+	- Rust NO los genera automáticamente
+	- Sirven para exponer datos sin permitir modificación
+
+FUNCIONES ASOCIADAS
+	- Están dentro de impl pero NO usan self
+	- No necesitan una instancia
+	- Se llaman con ::
+	Ejemplo:
+		Rectangle::square(3)
+
+CONSTRUCTORES
+	- No existe new obligatorio
+	- new es solo una convención
+	- Pueden tener cualquier nombre
+
+MULTIPLES BLOQUES IMPL
+	- Un struct puede tener varios impl
+	- Es solo organización
+	- Funcionalmente es lo mismo que uno solo
+
+IDEA CLAVE
+	- Los structs definen datos
+	- Los impl definen comportamiento
+	- Los métodos describen qué puede hacer una instancia
