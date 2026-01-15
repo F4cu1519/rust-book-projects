@@ -1,0 +1,141 @@
+RESUMEN: ENUMS Y OPTION EN RUST
+
+ENUMS (Enumeraciones)
+
+¿Para qué se usan?
+
+    Para representar un valor que puede ser UNA de varias opciones posibles.
+
+    Garantizan que un valor solo pueda estar en uno de esos estados válidos.
+
+    Evitan combinaciones inválidas de datos.
+
+Idea clave:
+Un enum representa “esto O aquello”, pero nunca ambos al mismo tiempo.
+
+Ejemplo básico:
+    enum IpAddrKind {
+        V4,
+        V6,
+    }
+
+Uso:
+    let four = IpAddrKind::V4;
+    let six = IpAddrKind::V6;
+
+Ambos valores son del mismo tipo: IpAddrKind.
+
+Ventaja principal:
+
+    Todas las variantes pertenecen a un solo tipo.
+
+    Se puede pasar cualquier variante a una misma función.
+
+Enum con datos asociados:
+    enum IpAddr {
+        V4(String),
+        V6(String),
+    }
+
+Cada variante puede:
+
+    Tener datos
+
+    Tener tipos distintos
+
+    Tener distinta cantidad de datos
+
+Ejemplo:
+    enum IpAddr {
+        V4(u8, u8, u8, u8),
+        V6(String),
+    }
+
+Esto NO se puede modelar bien con structs.
+
+Enum vs Struct:
+
+    Struct: todos los campos existen siempre
+
+    Enum: solo existe una variante a la vez
+
+Enums complejos:
+    enum Message {
+        Quit,
+        Move { x: i32, y: i32 },
+        Write(String),
+        ChangeColor(i32, i32, i32),
+    }
+
+Un enum puede reemplazar varios structs distintos y seguir siendo un solo tipo.
+
+Métodos en enums:
+
+    Los enums también pueden tener métodos usando impl.
+
+    Funcionan igual que en structs.
+
+OPTION<T>
+
+Qué es Option:
+enum Option<T> {
+None,
+Some(T),
+}
+
+Representa:
+
+    Some(T): hay un valor
+
+    None: no hay valor
+
+Rust NO tiene null.
+Option reemplaza completamente a null.
+
+Por qué Option es mejor que null:
+
+    Option<T> y T son tipos distintos.
+
+    El compilador obliga a manejar el caso None.
+
+    Evita errores comunes de null en tiempo de compilación.
+
+Ejemplo:
+    let x: i8 = 5;
+    let y: Option<i8> = Some(5);
+
+// Esto no compila:
+    let sum = x + y;
+
+Primero hay que manejar el Option.
+
+Uso correcto con match:
+    match y {
+        Some(v) => println!("{}", x + v),
+        None => println!("No hay valor"),
+    }
+
+Regla mental importante:
+
+    Si un valor puede no existir → usar Option<T>
+
+    Si un valor siempre existe → usar T
+
+    Rust te obliga a manejar ambos casos
+
+Conclusión:
+
+    Los enums modelan alternativas exclusivas.
+
+    Option hace explícita la ausencia de valores.
+
+    El compilador te fuerza a escribir código seguro.
+
+
+Enum	Para qué sirve
+Option<T>	Puede haber valor o no
+Result<T, E>	Puede salir bien o mal
+
+Buscar algo → Option
+
+Leer, parsear, abrir archivo → Result
