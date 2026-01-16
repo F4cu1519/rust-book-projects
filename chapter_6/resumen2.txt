@@ -1,0 +1,201 @@
+UNIDAD 6 – CONTROL DE FLUJO CON ENUMS (RESUMEN TXT)
+
+MATCH
+
+match es una estructura de control que permite ejecutar código distinto según la variante de un enum.
+
+Se usa principalmente con:
+
+    enums
+
+    Option
+
+    Result
+
+Ejemplo básico:
+
+    match valor {
+    patron1 => codigo,
+    patron2 => codigo,
+    }
+
+Regla clave:
+
+    match DEBE ser exhaustivo
+
+    Todas las posibilidades deben estar cubiertas
+
+MATCH CON ENUMS
+
+Ejemplo con enum propio:
+
+    enum Moneda {
+    Peso,
+    Dolar,
+    Euro,
+    }
+
+    fn valor(moneda: Moneda) -> i32 {
+    match moneda {
+    Moneda::Peso => 1,
+    Moneda::Dolar => 1000,
+    Moneda::Euro => 1100,
+    }
+    }
+
+Cada brazo:
+
+    Recibe una variante
+
+    Devuelve un valor del mismo tipo
+
+MATCH QUE EXTRAE DATOS
+
+    match no solo compara, también desempaqueta datos.
+
+Ejemplo:
+
+    enum Moneda {
+    Peso,
+    Dolar(i32),
+    }
+
+    fn valor(moneda: Moneda) -> i32 {
+    match moneda {
+    Moneda::Peso => 1,
+    Moneda::Dolar(monto) => monto,
+    }
+    }
+
+Acá:
+
+    monto toma el valor interno del enum
+
+MATCH CON OPTION<T>
+
+Ejemplo típico:
+
+    fn sumar_uno(x: Option<i32>) -> Option<i32> {
+    match x {
+    Some(n) => Some(n + 1),
+    None => None,
+    }
+    }
+
+Idea clave:
+
+    Some(n) te da acceso al valor
+
+    None no tiene valor
+
+MATCH ES UNA EXPRESIÓN
+
+    Esto es MUY importante en Rust.
+
+    match devuelve un valor.
+
+Ejemplo:
+
+    let resultado = match x {
+    Some(v) => v,
+    None => 0,
+    };
+
+No es solo control de flujo, es una expresión.
+
+EL GUION BAJO _
+
+_ significa:
+“no me importa este valor”
+
+Ejemplo:
+
+    match numero {
+    1 => println!("uno"),
+    _ => println!("otro"),
+    }
+
+Se usa como “default”.
+
+IF LET
+
+    if let es una versión corta de match.
+
+Se usa cuando:
+
+    Solo te interesa UNA variante
+
+    Querés ignorar el resto
+
+Ejemplo con Option:
+
+    if let Some(n) = valor {
+    println!("Valor: {}", n);
+    }
+
+Es equivalente a:
+
+    match valor {
+    Some(n) => println!("Valor: {}", n),
+    None => (),
+    }
+
+IF LET CON ELSE
+
+    También podés manejar el otro caso:
+
+    if let Some(n) = valor {
+    println!("Hay valor");
+    } else {
+    println!("No hay valor");
+    }
+
+CUÁNDO USAR MATCH VS IF LET
+
+Usar match cuando:
+
+    Necesitás manejar todas las variantes
+
+    Querés claridad
+
+La lógica es importante
+
+Usar if let cuando:
+
+    Solo importa una variante
+
+    El resto se ignora
+
+    Querés código más corto
+
+RELACIÓN ENTRE ENUMS Y CONTROL DE FLUJO
+
+Rust usa enums + match para:
+
+    Evitar estados inválidos
+
+    Forzar manejo de todos los casos
+
+    Eliminar null
+
+    Eliminar ifs inseguros
+
+    Esto es una decisión central del lenguaje.
+
+IDEA CLAVE DE LA UNIDAD 6
+
+Rust no usa:
+
+    null
+
+    excepciones
+
+    Usa:
+
+    enums
+
+    match
+
+    tipos fuertes
+
+El control de flujo está guiado por el sistema de tipos.

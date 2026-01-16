@@ -1,0 +1,1 @@
+C:\Users\facun\Projects\ of\ rust\ book\chapter_6\leer_entrada_definitivo\target\debug\leer_entrada_definitivo.exe: C:\Users\facun\Projects\ of\ rust\ book\chapter_6\leer_entrada_definitivo\src\main.rs
