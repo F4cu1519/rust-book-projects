@@ -1,0 +1,79 @@
+RUST BOOK - CAPITULO 7
+FUNDAMENTOS: PACKAGES, CRATES Y MODULOS
+
+
+PACKAGES Y CRATES
+
+    Crate
+        Unidad minima de compilacion en Rust
+        Puede ser binario o libreria
+
+        Crate binario
+            Genera un ejecutable
+            Siempre tiene una funcion main
+
+        Crate libreria
+            No tiene funcion main
+            Provee funcionalidades reutilizables
+
+    Package
+        Conjunto de uno o mas crates
+        Definido por un archivo Cargo.toml
+
+        Reglas
+            Puede tener multiples crates binarios
+            Puede tener solo un crate libreria
+            Debe tener al menos un crate
+
+
+ESTRUCTURA BASICA DE UN PROYECTO
+
+    Cargo.toml
+        Define el package
+        Contiene nombre, version y dependencias
+
+    src/main.rs
+        Raiz del crate binario
+
+    src/lib.rs
+        Raiz del crate libreria
+
+    src/bin/
+        Cada archivo es un crate binario independiente
+
+
+MODULOS
+
+    Que es un modulo
+        Forma de organizar el codigo
+        Agrupa funcionalidades relacionadas
+        Define limites de visibilidad
+
+    Declaracion
+        mod nombre_modulo
+
+    Jerarquia
+        Los modulos pueden contener otros modulos
+        Forman un arbol que nace en el crate raiz
+
+
+SCOPE Y PRIVACIDAD
+
+    Reglas generales
+        Todo es privado por defecto
+        Solo lo marcado con pub es accesible desde afuera
+
+    pub
+        Hace publico un modulo
+        Hace publica una funcion, struct o enum
+
+    Importante
+        Hacer pub un modulo no hace publicos sus contenidos
+        Cada item debe marcarse explicitamente
+
+
+ARBOL DE MODULOS
+
+    El crate es la raiz
+    Los modulos son nodos
+    Las rutas determinan como acceder a cada item
