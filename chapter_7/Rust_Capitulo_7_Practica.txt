@@ -1,0 +1,83 @@
+RUST BOOK - CAPITULO 7
+PRACTICA: PATHS, USE Y ARCHIVOS
+
+
+PATHS
+
+    Que es un path
+        Ruta para acceder a un item del arbol de modulos
+        Usa :: para separar niveles
+
+    Rutas absolutas
+        Empiezan desde la raiz del crate
+        Usan crate::
+
+        Ejemplo
+            crate::front_of_house::hosting::add_to_waitlist
+
+    Rutas relativas
+        Empiezan desde el modulo actual
+        Usan nombres directos, self o super
+
+    self
+        Referencia al modulo actual
+
+    super
+        Referencia al modulo padre
+
+
+PRIVACIDAD Y PATHS
+
+    Aunque el path sea correcto
+        El item debe ser publico
+        Si no es pub, el compilador da error
+
+
+USE
+
+    Que hace use
+        Trae un path al scope actual
+        Permite usar nombres mas cortos
+
+    Alcance
+        use solo aplica al modulo donde se declara
+        No se hereda automaticamente
+
+    Alias con as
+        Permite renombrar imports
+        Evita conflictos de nombres
+
+    pub use
+        Reexporta items
+        Simplifica la API publica de un crate
+
+    Glob *
+        Importa todo lo publico de un modulo
+        Debe usarse con cuidado
+
+
+SEPARAR MODULOS EN ARCHIVOS
+
+    mod nombre;
+        Indica que el modulo esta en otro archivo
+        No copia codigo
+
+    Ubicaciones comunes
+        src/nombre.rs
+        src/nombre/mod.rs
+
+    Submodulos
+        src/modulo/submodulo.rs
+        Reflejan la jerarquia del arbol
+
+    Reglas
+        No se puede usar archivo.rs y mod.rs al mismo tiempo
+        La organizacion en archivos no cambia como se usan los paths
+
+
+ESTRUCTURA FINAL EJEMPLO
+
+    src/
+        lib.rs
+        front_of_house/
+            hosting.rs
