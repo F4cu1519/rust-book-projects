@@ -1,0 +1,99 @@
+COLECCIONES EN RUST — RESUMEN Y APUNTES Basado en: The Rust Programming
+Language (Rust Book), Capítulo 8
+
+==================================== INTRODUCCIÓN
+==================================== Las colecciones en Rust permiten
+almacenar múltiples valores en una sola estructura. A diferencia de los
+arrays, las colecciones pueden crecer o reducirse dinámicamente. Las más
+usadas son: - Vec (vectores) - String - HashMap<K, V>
+
+==================================== VECTORES (Vec)
+==================================== Un vector almacena valores del
+mismo tipo en memoria contigua.
+
+Crear vectores:
+
+let v: Vec = Vec::new(); let v = vec[1, 2, 3];
+
+Agregar elementos:
+
+let mut v = Vec::new(); v.push(10); v.push(20);
+
+Acceder a elementos:
+
+let tercer = &v[2]; // Puede panic si no existe let tercer = v.get(2);
+// Devuelve Option<&T>
+
+Iterar:
+
+for x in &v { println!(“{x}”); }
+
+Vector mutable:
+
+for x in &mut v { *x += 1; }
+
+==================================== STRING
+==================================== String es una colección de bytes
+UTF-8 mutable. No es lo mismo que &str.
+
+Crear strings:
+
+let s = String::new(); let s = “hola”.to_string(); let s =
+String::from(“hola”);
+
+Modificar strings:
+
+let mut s = String::from(“hola”); s.push_str(” mundo”); s.push(‘!’);
+
+Concatenar:
+
+let s1 = String::from(“hola”); let s2 = String::from(” mundo”); let s3 =
+s1 + &s2; // s1 se mueve
+
+Usar format!:
+
+let s = format!(“{s2}!!!”);
+
+Iterar caracteres:
+
+for c in s.chars() { println!(“{c}”); }
+
+==================================== HASHMAPS (HashMap<K, V>)
+==================================== Asocian claves con valores.
+
+Crear HashMap:
+
+use std::collections::HashMap;
+
+let mut scores = HashMap::new(); scores.insert(String::from(“Azul”),
+10); scores.insert(String::from(“Rojo”), 50);
+
+Acceder a valores:
+
+let team = String::from(“Azul”); let score = scores.get(&team);
+
+Iterar:
+
+for (key, value) in &scores { println!(“{key}: {value}”); }
+
+Actualizar valores:
+
+scores.insert(String::from(“Azul”), 25);
+
+Insertar solo si no existe:
+
+scores.entry(String::from(“Verde”)).or_insert(30);
+
+Modificar valor existente:
+
+scores.entry(String::from(“Azul”)).and_modify(|v| *v += 10);
+
+==================================== CONCEPTOS CLAVE
+==================================== - Ownership aplica a todas las
+colecciones - Vec, String y HashMap están en el heap - Accesos pueden
+devolver Option - String usa UTF-8 - HashMap no mantiene orden
+
+==================================== BIBLIOGRAFÍA
+==================================== The Rust Programming Language
+(Libro Oficial) Capítulo 8: Common Collections
+https://doc.rust-lang.org/book/ch08-00-common-collections.html
