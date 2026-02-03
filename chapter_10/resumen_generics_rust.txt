@@ -1,0 +1,316 @@
+TIPOS GENÉRICOS EN RUST (GENERICS)
+===================================
+
+INTRODUCCIÓN
+------------
+
+Los tipos genéricos son una característica fundamental de Rust que permite escribir código
+flexible y reutilizable sin sacrificar el rendimiento ni la seguridad de tipos.
+
+Un genérico es un marcador de posición para tipos concretos u otras propiedades. Permiten
+que funciones, structs, enums y métodos operen sobre muchos tipos diferentes sin duplicar código.
+
+
+¿POR QUÉ USAR GENÉRICOS?
+-------------------------
+
+PROBLEMA: Duplicación de código
+Imagina que necesitas encontrar el número más grande en diferentes listas:
+
+    fn largest_i32(list: &[i32]) -> &i32 { ... }
+    fn largest_char(list: &[char]) -> &[char] { ... }
+
+Estas funciones hacen lo mismo, solo cambia el tipo. Los genéricos eliminan esta duplicación.
+
+SOLUCIÓN: Una sola función genérica
+    fn largest<T>(list: &[T]) -> &T { ... }
+
+VENTAJAS:
+- Menos duplicación de código
+- Código más mantenible
+- Abstracción sin costo de rendimiento (zero-cost abstraction)
+- El compilador genera código específico para cada tipo en tiempo de compilación (monomorfización)
+
+
+SINTAXIS BÁSICA
+----------------
+
+Los parámetros de tipo se declaran entre ángulos < > después del nombre.
+Por convención, se usa T (de "Type") pero puedes usar cualquier identificador.
+
+ANATOMÍA:
+    fn nombre<T>(parametro: T) -> T
+              ^^^            ^      ^
+              |              |      |
+         Declaración    Uso en   Uso en
+         del genérico   param    retorno
+
+
+GENÉRICOS EN FUNCIONES
+-----------------------
+
+EJEMPLO BÁSICO:
+
+    fn largest<T>(list: &[T]) -> &T {
+        let mut largest = &list[0];
+        
+        for item in list {
+            if item > largest {  // ERROR: T podría no tener operador >
+                largest = item;
+            }
+        }
+        
+        largest
+    }
+
+PROBLEMA: No todos los tipos T tienen el operador de comparación >
+SOLUCIÓN: Usar trait bounds (se verá en el tema de Traits)
+
+    fn largest<T: PartialOrd>(list: &[T]) -> &T { ... }
+
+
+EJEMPLO FUNCIONAL:
+
+    fn first<T>(list: &[T]) -> &T {
+        &list[0]
+    }
+
+    fn main() {
+        let numbers = vec![1, 2, 3];
+        let chars = vec!['a', 'b', 'c'];
+        
+        println!("First number: {}", first(&numbers));  // First number: 1
+        println!("First char: {}", first(&chars));      // First char: a
+    }
+
+
+GENÉRICOS EN STRUCTS
+---------------------
+
+SINTAXIS:
+
+    struct Point<T> {
+        x: T,
+        y: T,
+    }
+
+USO:
+
+    let integer_point = Point { x: 5, y: 10 };
+    let float_point = Point { x: 1.0, y: 4.0 };
+
+IMPORTANTE: Todas las instancias del mismo parámetro T deben ser del mismo tipo.
+
+    let mixed = Point { x: 5, y: 4.0 };  // ERROR: x es i32, y es f64
+
+
+MÚLTIPLES PARÁMETROS DE TIPO:
+
+    struct Point<T, U> {
+        x: T,
+        y: U,
+    }
+
+    let mixed = Point { x: 5, y: 4.0 };     // OK: x es i32, y es f64
+    let integer = Point { x: 5, y: 10 };    // OK: ambos i32
+    let float = Point { x: 1.0, y: 4.0 };   // OK: ambos f64
+
+
+GENÉRICOS EN ENUMS
+------------------
+
+Rust incluye enums genéricos muy útiles en la biblioteca estándar:
+
+OPTION<T>:
+
+    enum Option<T> {
+        Some(T),
+        None,
+    }
+
+    let some_number = Some(5);           // Option<i32>
+    let some_string = Some("hello");     // Option<&str>
+    let absent_number: Option<i32> = None;
+
+RESULT<T, E>:
+
+    enum Result<T, E> {
+        Ok(T),
+        Err(E),
+    }
+
+    let success: Result<i32, String> = Ok(200);
+    let failure: Result<i32, String> = Err(String::from("Error"));
+
+
+TU PROPIO ENUM GENÉRICO:
+
+    enum MyResult<T, E> {
+        Success(T),
+        Failure(E),
+    }
+
+    let result = MyResult::Success(42);
+    let error = MyResult::Failure("Something went wrong");
+
+
+GENÉRICOS EN MÉTODOS
+---------------------
+
+SINTAXIS:
+
+    impl<T> Point<T> {
+        fn x(&self) -> &T {
+            &self.x
+        }
+    }
+
+IMPORTANTE: El <T> después de impl indica que estamos implementando métodos para Point<T>.
+
+USO:
+
+    let p = Point { x: 5, y: 10 };
+    println!("p.x = {}", p.x());  // p.x = 5
+
+
+MÉTODOS PARA TIPOS ESPECÍFICOS:
+
+Puedes implementar métodos solo para ciertas versiones del tipo genérico:
+
+    impl Point<f32> {
+        fn distance_from_origin(&self) -> f32 {
+            (self.x.powi(2) + self.y.powi(2)).sqrt()
+        }
+    }
+
+Este método solo está disponible para Point<f32>, no para Point<i32> ni otros tipos.
+
+
+MÚLTIPLES PARÁMETROS EN MÉTODOS:
+
+    struct Point<T, U> {
+        x: T,
+        y: U,
+    }
+
+    impl<T, U> Point<T, U> {
+        fn mixup<V, W>(self, other: Point<V, W>) -> Point<T, W> {
+            Point {
+                x: self.x,
+                y: other.y,
+            }
+        }
+    }
+
+    let p1 = Point { x: 5, y: 10.4 };
+    let p2 = Point { x: "Hello", y: 'c' };
+    let p3 = p1.mixup(p2);
+    
+    // p3 tiene x de p1 (i32) y y de p2 (char)
+    // p3 es Point<i32, char>
+
+
+RENDIMIENTO DE LOS GENÉRICOS
+-----------------------------
+
+MONOMORFIZACIÓN:
+
+Rust usa un proceso llamado "monomorfización" en tiempo de compilación.
+El compilador genera código específico para cada tipo concreto que uses.
+
+CÓDIGO GENÉRICO QUE ESCRIBES:
+
+    let integer = Some(5);
+    let float = Some(5.0);
+
+CÓDIGO QUE EL COMPILADOR GENERA:
+
+    enum Option_i32 {
+        Some(i32),
+        None,
+    }
+    
+    enum Option_f64 {
+        Some(f64),
+        None,
+    }
+    
+    let integer = Option_i32::Some(5);
+    let float = Option_f64::Some(5.0);
+
+RESULTADO: No hay costo de rendimiento en tiempo de ejecución.
+Los genéricos en Rust son tan rápidos como código escrito a mano para cada tipo.
+
+
+EJEMPLOS COMUNES EN RUST ESTÁNDAR
+----------------------------------
+
+VEC<T> - Vector genérico:
+    let numbers: Vec<i32> = vec![1, 2, 3];
+    let words: Vec<String> = vec![String::from("hello"), String::from("world")];
+
+HASHMAP<K, V> - Mapa genérico:
+    use std::collections::HashMap;
+    let mut scores: HashMap<String, i32> = HashMap::new();
+
+BOX<T> - Puntero inteligente genérico:
+    let b = Box::new(5);  // Box<i32>
+
+
+LIMITACIONES Y CONSIDERACIONES
+-------------------------------
+
+1. SIN TRAIT BOUNDS, LAS OPERACIONES SON LIMITADAS:
+   
+   No puedes hacer operaciones específicas de tipo sin restricciones:
+   
+   fn add<T>(a: T, b: T) -> T {
+       a + b  // ERROR: T podría no implementar el operador +
+   }
+   
+   Solución: Usar trait bounds (tema siguiente)
+
+2. INFERENCIA DE TIPOS:
+   
+   A veces Rust puede inferir el tipo:
+   
+   let x = Some(5);  // Rust sabe que es Option<i32>
+   
+   Otras veces necesitas especificarlo:
+   
+   let x: Option<i32> = None;  // Rust necesita saber el tipo
+
+3. CONVENCIONES DE NOMBRES:
+   
+   - T: Type (tipo genérico general)
+   - E: Error (tipo de error)
+   - K: Key (clave en mapas)
+   - V: Value (valor en mapas)
+   - I: Iterator (iterador)
+
+
+RESUMEN Y PUNTOS CLAVE
+-----------------------
+
+✓ Los genéricos eliminan duplicación de código
+✓ Se usan en funciones, structs, enums y métodos
+✓ La sintaxis usa paréntesis angulares: <T>
+✓ Pueden tener múltiples parámetros: <T, U, V>
+✓ No tienen costo de rendimiento (zero-cost abstraction)
+✓ El compilador genera código específico para cada tipo (monomorfización)
+✓ Para operaciones específicas, necesitas trait bounds (siguiente tema)
+
+PRÓXIMOS PASOS:
+- Estudiar Traits para agregar restricciones a los genéricos
+- Aprender sobre Lifetimes para trabajar con referencias genéricas
+- Practicar combinando genéricos con trait bounds
+
+
+EJEMPLOS PARA PRACTICAR
+------------------------
+
+1. Crea un struct Container<T> que almacene un valor
+2. Implementa un método get() que devuelva una referencia al valor
+3. Crea una función swap<T>(a: T, b: T) -> (T, T) que intercambie dos valores
+4. Implementa un enum MyOption<T> similar a Option<T>
+5. Crea un struct Pair<T, U> y métodos para acceder a cada campo
