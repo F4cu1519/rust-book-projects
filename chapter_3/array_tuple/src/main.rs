@@ -8,7 +8,10 @@ fn main() {
     match op.trim() {
         "1" => array(),
         "2" => tuple(),
-        _ => println!("Invalid option"),
+        _ => println!("Invalid option"), 
+        // en los match se pude usar el other en lugar del _, pero solo en caso de 
+        // querer hacer uso de la opcion, onda : 
+        // other => hacer_algo(other),
     }
 
 }
@@ -18,7 +21,9 @@ fn tuple() {
     let mut indice = String::new();
     io::stdin().read_line(&mut indice).expect("Failed to read line");
 
-    // En caso de tupla no usar el match si tienen distintos tipos
+    // En caso de tupla no usar el match si tienen distintos tipos, los match no van con 
+    // tipos distintos, para algunos casos se usan los enums  de manera similar que sirven
+    // en las listas o vec
     if indice.trim() == "0" {
         let element = tup.0;
         println!("The value of the element at index {indice} is: {element}");

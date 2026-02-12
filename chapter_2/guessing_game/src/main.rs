@@ -13,7 +13,7 @@ fn main() {
         io::stdin()
             .read_line(&mut guess)
             .expect("Error al leer la linea");
-
+        
         let guess: u32 = match guess.trim().parse() {
             Ok(num) => num,
             Err(_) => {
