@@ -1,0 +1,544 @@
+================================================================
+         TIPOS DE DATOS EN RUST - GUÍA COMPLETA
+================================================================
+
+Rust tiene un sistema de tipos fuerte, estático e inferido.
+Todos los tipos deben ser conocidos en tiempo de compilación.
+
+================================================================
+1. TIPOS ESCALARES (Scalar Types)
+================================================================
+
+Los tipos escalares representan un único valor.
+
+----------------------------------------------------------------
+1.1 ENTEROS (Integers)
+----------------------------------------------------------------
+
+Con signo (pueden ser negativos):
+  i8    → -128 a 127
+  i16   → -32.768 a 32.767
+  i32   → -2.147.483.648 a 2.147.483.647        [por defecto]
+  i64   → -9.223.372.036.854.775.808 a ...
+  i128  → rango enorme (16 bytes)
+  isize → depende de la arquitectura (32 o 64 bits)
+
+Sin signo (solo positivos):
+  u8    → 0 a 255
+  u16   → 0 a 65.535
+  u32   → 0 a 4.294.967.295
+  u64   → 0 a 18.446.744.073.709.551.615
+  u128  → rango enorme (16 bytes)
+  usize → depende de la arquitectura (usado para índices)
+
+Literales enteros:
+  let decimal     = 98_222;      // separadores visuales permitidos
+  let hexadecimal = 0xff;
+  let octal       = 0o77;
+  let binario     = 0b1111_0000;
+  let byte        = b'A';        // solo u8
+
+Overflow:
+  En modo debug  → Rust entra en pánico (panic)
+  En modo release → hace wrapping (vuelve al mínimo)
+  Métodos seguros: wrapping_add, checked_add, saturating_add, overflowing_add
+
+----------------------------------------------------------------
+1.2 PUNTO FLOTANTE (Floating Point)
+----------------------------------------------------------------
+
+  f32  → precisión simple (4 bytes)
+  f64  → precisión doble (8 bytes)          [por defecto]
+
+  let x = 2.0;        // f64
+  let y: f32 = 3.0;   // f32
+
+Siguen el estándar IEEE-754.
+Soporte para: NaN, Infinity, -Infinity
+
+  let nan = f64::NAN;
+  let inf = f64::INFINITY;
+  nan.is_nan()       // true
+  inf.is_infinite()  // true
+
+Operaciones básicas:
+  let suma  = 5.0 + 10.0;
+  let resta = 95.5 - 4.3;
+  let mult  = 4.0 * 30.0;
+  let div   = 56.7 / 32.2;
+  let resto = 57.0 % 43.2;
+
+----------------------------------------------------------------
+1.3 BOOLEANO (Boolean)
+----------------------------------------------------------------
+
+  bool → true o false (1 byte)
+
+  let activo: bool = true;
+  let inactivo = false;
+
+Se usa en estructuras de control: if, while, etc.
+
+----------------------------------------------------------------
+1.4 CARÁCTER (Character)
+----------------------------------------------------------------
+
+  char → 4 bytes, representa un scalar value Unicode (U+0000 a U+D7FF)
+
+  let letra = 'a';
+  let emoji = '😊';
+  let chino = '中';
+
+  NOTA: char usa comillas simples, String usa comillas dobles.
+
+================================================================
+2. TIPOS COMPUESTOS (Compound Types)
+================================================================
+
+Agrupan múltiples valores en un solo tipo.
+
+----------------------------------------------------------------
+2.1 TUPLAS (Tuples)
+----------------------------------------------------------------
+
+Tamaño fijo. Pueden mezclar tipos distintos.
+
+  let tupla: (i32, f64, char) = (500, 6.4, 'z');
+
+Acceso por índice:
+  let primero = tupla.0;
+  let segundo = tupla.1;
+  let tercero = tupla.2;
+
+Desestructuración:
+  let (x, y, z) = tupla;
+
+Tupla vacía (unit):
+  let unit: () = ();
+  // Es el tipo de retorno por defecto de funciones que no retornan nada.
+
+----------------------------------------------------------------
+2.2 ARRAYS
+----------------------------------------------------------------
+
+Tamaño FIJO en tiempo de compilación. Mismo tipo para todos los elementos.
+
+  let array: [i32; 5] = [1, 2, 3, 4, 5];
+  let zeros = [0; 10];   // [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+Acceso:
+  let primero = array[0];
+  let ultimo  = array[4];
+
+  Si se accede fuera del rango → panic en tiempo de ejecución.
+
+Longitud:
+  array.len()  // 5
+
+IMPORTANTE: Para tamaño dinámico, usar Vec<T>.
+
+================================================================
+3. TIPOS DE TEXTO
+================================================================
+
+----------------------------------------------------------------
+3.1 &str (String Slice)
+----------------------------------------------------------------
+
+- Referencia inmutable a una cadena de texto UTF-8
+- Tamaño conocido en tiempo de compilación
+- Vive en el binario o en el heap (dependiendo del contexto)
+
+  let saludo: &str = "Hola, mundo";
+
+----------------------------------------------------------------
+3.2 String
+----------------------------------------------------------------
+
+- String dinámico, almacenado en el heap
+- Mutable y de tamaño variable
+- Posee los datos (es el dueño)
+
+  let mut s = String::from("Hola");
+  s.push_str(", mundo");
+  s.push('!');
+
+Conversiones:
+  let s1: String = "texto".to_string();
+  let s2: String = String::from("texto");
+  let slice: &str = &s1;        // String → &str
+  let owned: String = slice.to_string();  // &str → String
+
+Métodos útiles:
+  s.len()               // longitud en bytes
+  s.is_empty()          // true si vacío
+  s.contains("texto")   // búsqueda
+  s.replace("a", "b")   // reemplazo
+  s.to_uppercase()
+  s.to_lowercase()
+  s.trim()              // quita espacios al inicio y fin
+  s.split(',')          // divide por delimitador
+
+================================================================
+4. TIPOS DE COLECCIÓN
+================================================================
+
+----------------------------------------------------------------
+4.1 Vec<T> (Vector)
+----------------------------------------------------------------
+
+Array dinámico almacenado en el heap.
+
+  let v: Vec<i32> = Vec::new();
+  let v = vec![1, 2, 3];      // macro conveniente
+
+  let mut v = Vec::new();
+  v.push(5);
+  v.push(6);
+  v.pop();                    // retorna Option<T>
+
+Acceso:
+  let tercero = &v[2];         // panic si fuera de rango
+  let tercero = v.get(2);      // retorna Option<&T>
+
+Iterar:
+  for i in &v { println!("{}", i); }
+  for i in &mut v { *i += 50; }
+
+----------------------------------------------------------------
+4.2 HashMap<K, V>
+----------------------------------------------------------------
+
+  use std::collections::HashMap;
+
+  let mut mapa = HashMap::new();
+  mapa.insert("clave", 10);
+  mapa.insert("otra", 20);
+
+Acceso:
+  let valor = mapa.get("clave");   // Option<&V>
+  let valor = mapa["clave"];       // panic si no existe
+
+Verificar existencia:
+  mapa.contains_key("clave")
+
+Insertar solo si no existe:
+  mapa.entry("clave").or_insert(100);
+
+Iterar:
+  for (k, v) in &mapa { println!("{}: {}", k, v); }
+
+================================================================
+5. TIPOS ESPECIALES / ENUMERADOS
+================================================================
+
+----------------------------------------------------------------
+5.1 Option<T>
+----------------------------------------------------------------
+
+Representa un valor que puede existir o no. Elimina los null pointers.
+
+  enum Option<T> {
+      Some(T),
+      None,
+  }
+
+  let numero: Option<i32> = Some(42);
+  let nada: Option<i32> = None;
+
+Uso:
+  if let Some(n) = numero {
+      println!("Valor: {}", n);
+  }
+
+  let valor = numero.unwrap();              // panic si None
+  let valor = numero.unwrap_or(0);         // valor por defecto
+  let valor = numero.expect("Falló");      // panic con mensaje
+  let valor = numero.unwrap_or_else(|| 0); // closure
+
+Métodos útiles:
+  numero.is_some()   // true
+  numero.is_none()   // false
+  numero.map(|n| n * 2)  // transforma el valor interno
+
+----------------------------------------------------------------
+5.2 Result<T, E>
+----------------------------------------------------------------
+
+Representa una operación que puede fallar.
+
+  enum Result<T, E> {
+      Ok(T),
+      Err(E),
+  }
+
+  fn dividir(a: f64, b: f64) -> Result<f64, String> {
+      if b == 0.0 {
+          Err(String::from("División por cero"))
+      } else {
+          Ok(a / b)
+      }
+  }
+
+Uso:
+  match dividir(10.0, 2.0) {
+      Ok(resultado) => println!("Resultado: {}", resultado),
+      Err(e)        => println!("Error: {}", e),
+  }
+
+  let r = dividir(10.0, 2.0).unwrap();
+  let r = dividir(10.0, 2.0).unwrap_or(0.0);
+
+Operador ? (propagación de errores):
+  fn operacion() -> Result<f64, String> {
+      let resultado = dividir(10.0, 2.0)?;  // retorna Err si falla
+      Ok(resultado + 1.0)
+  }
+
+----------------------------------------------------------------
+5.3 Enums personalizados
+----------------------------------------------------------------
+
+  enum Direccion {
+      Norte,
+      Sur,
+      Este,
+      Oeste,
+  }
+
+  enum Mensaje {
+      Salir,
+      Mover { x: i32, y: i32 },
+      Escribir(String),
+      CambiarColor(i32, i32, i32),
+  }
+
+  let msg = Mensaje::Mover { x: 10, y: 20 };
+
+  match msg {
+      Mensaje::Salir => println!("Salir"),
+      Mensaje::Mover { x, y } => println!("Mover a {}, {}", x, y),
+      Mensaje::Escribir(texto) => println!("{}", texto),
+      Mensaje::CambiarColor(r, g, b) => println!("Color: {},{},{}", r, g, b),
+  }
+
+================================================================
+6. TIPOS ESTRUCTURADOS
+================================================================
+
+----------------------------------------------------------------
+6.1 Structs
+----------------------------------------------------------------
+
+  struct Punto {
+      x: f64,
+      y: f64,
+  }
+
+  let p = Punto { x: 1.0, y: 2.0 };
+  println!("{}", p.x);
+
+Struct de tupla:
+  struct Color(u8, u8, u8);
+  let rojo = Color(255, 0, 0);
+  println!("{}", rojo.0);
+
+Struct unitaria:
+  struct Marcador;
+
+Implementar métodos:
+  impl Punto {
+      fn nuevo(x: f64, y: f64) -> Punto {
+          Punto { x, y }
+      }
+
+      fn distancia_al_origen(&self) -> f64 {
+          (self.x * self.x + self.y * self.y).sqrt()
+      }
+  }
+
+  let p = Punto::nuevo(3.0, 4.0);
+  println!("{}", p.distancia_al_origen()); // 5.0
+
+================================================================
+7. OWNERSHIP, COPY Y MOVE
+================================================================
+
+Este comportamiento es único y fundamental en Rust.
+
+----------------------------------------------------------------
+7.1 Tipos con trait Copy (se copian automáticamente)
+----------------------------------------------------------------
+
+  - Todos los enteros (i8, u64, etc.)
+  - Todos los floats (f32, f64)
+  - bool
+  - char
+  - Tuplas y arrays de tipos Copy
+
+  let x = 5;
+  let y = x;        // se COPIA
+  println!("{} {}", x, y);  // ambos válidos ✅
+
+----------------------------------------------------------------
+7.2 Tipos sin Copy (se mueven - Move semantics)
+----------------------------------------------------------------
+
+  - String
+  - Vec<T>
+  - HashMap
+  - Structs sin Copy
+
+  let s1 = String::from("hola");
+  let s2 = s1;      // s1 se MUEVE a s2
+  // println!("{}", s1);  // ❌ error: s1 ya no es válido
+
+Para clonar (copia profunda):
+  let s2 = s1.clone();   // s1 sigue siendo válido
+
+----------------------------------------------------------------
+7.3 Borrowing (Préstamos)
+----------------------------------------------------------------
+
+Referencias inmutables (&T):
+  let s1 = String::from("hola");
+  let len = calcular_len(&s1);   // presto s1
+  println!("{} tiene {} bytes", s1, len); // s1 sigue válido ✅
+
+  fn calcular_len(s: &String) -> usize {
+      s.len()
+  }   // s sale de scope pero no hace drop (no es dueño)
+
+Referencias mutables (&mut T):
+  let mut s = String::from("hola");
+  cambiar(&mut s);
+
+  fn cambiar(s: &mut String) {
+      s.push_str(", mundo");
+  }
+
+REGLAS de borrowing (el compilador las verifica):
+  1. Solo puede existir UNA referencia mutable a la vez
+  2. Pueden existir MÚLTIPLES referencias inmutables simultáneas
+  3. No pueden coexistir referencias mutables e inmutables al mismo tiempo
+
+================================================================
+8. TIPOS DE PUNTEROS INTELIGENTES
+================================================================
+
+----------------------------------------------------------------
+8.1 Box<T>
+----------------------------------------------------------------
+
+Almacena datos en el heap. Tiene ownership.
+
+  let b = Box::new(5);
+  println!("{}", b);
+
+Útil para:
+  - Tipos de tamaño desconocido en compilación
+  - Datos grandes que no quieres copiar
+  - Trait objects
+
+----------------------------------------------------------------
+8.2 Rc<T> (Reference Counted)
+----------------------------------------------------------------
+
+Permite múltiples dueños (solo hilo único).
+
+  use std::rc::Rc;
+  let a = Rc::new(5);
+  let b = Rc::clone(&a);
+  println!("Contador: {}", Rc::strong_count(&a)); // 2
+
+----------------------------------------------------------------
+8.3 Arc<T> (Atomic Reference Counted)
+----------------------------------------------------------------
+
+Como Rc<T> pero thread-safe (multi-hilo).
+
+  use std::sync::Arc;
+  let a = Arc::new(5);
+  let b = Arc::clone(&a);
+
+----------------------------------------------------------------
+8.4 RefCell<T>
+----------------------------------------------------------------
+
+Permite mutabilidad interior (verificada en runtime).
+
+  use std::cell::RefCell;
+  let dato = RefCell::new(5);
+  *dato.borrow_mut() += 10;
+  println!("{}", dato.borrow()); // 15
+
+================================================================
+9. SLICES
+================================================================
+
+Referencia a una porción contigua de una colección.
+
+  let array = [1, 2, 3, 4, 5];
+  let slice = &array[1..3];   // [2, 3]
+
+  let s = String::from("hola mundo");
+  let hola = &s[0..4];        // "hola"
+  let mundo = &s[5..10];      // "mundo"
+
+Tipos de rango:
+  &s[..]      // toda la cadena
+  &s[0..5]    // del 0 al 4 (5 no incluido)
+  &s[0..=4]   // del 0 al 4 (4 incluido)
+  &s[3..]     // del 3 al final
+
+================================================================
+10. CONVERSIÓN ENTRE TIPOS
+================================================================
+
+Conversión segura (as):
+  let x: i32 = 300;
+  let y = x as i64;
+  let z = x as f64;
+  let b = x as u8;    // puede truncar, cuidado
+
+Traits de conversión:
+  From / Into:
+    let s = String::from("texto");       // From
+    let s: String = "texto".into();      // Into
+
+  TryFrom / TryInto (puede fallar → Result):
+    use std::convert::TryFrom;
+    let n = i8::try_from(1000i32);  // Err: valor fuera de rango
+
+  ToString / FromStr:
+    let s = 42.to_string();
+    let n: i32 = "42".parse().unwrap();
+    let n: i32 = "42".parse::<i32>().unwrap();
+
+================================================================
+11. TABLA RESUMEN DE TIPOS
+================================================================
+
+TIPO        TAMAÑO     EJEMPLO               COPY?
+--------------------------------------------------------------
+i8          1 byte     let x: i8 = -5;       Sí
+u8          1 byte     let x: u8 = 255;       Sí
+i32         4 bytes    let x = 42;            Sí
+u32         4 bytes    let x: u32 = 42;       Sí
+i64         8 bytes    let x: i64 = 42;       Sí
+f32         4 bytes    let x: f32 = 3.14;     Sí
+f64         8 bytes    let x = 3.14;          Sí
+bool        1 byte     let x = true;          Sí
+char        4 bytes    let x = 'a';           Sí
+&str        2 words    let x = "hola";        Sí (es ref)
+String      3 words+   String::from("hola");  No
+Vec<T>      3 words+   vec![1,2,3];           No
+Tuple       varía      (1, 'a', 3.0)          Si todos lo son
+Array       fijo       [1,2,3,4,5]            Si el tipo lo es
+--------------------------------------------------------------
+
+================================================================
+FIN DE LA GUÍA
+================================================================
+Guía generada con Claude — claude.ai
+================================================================
