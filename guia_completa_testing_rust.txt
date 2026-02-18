@@ -1,0 +1,431 @@
+================================================================================
+                    GUÍA COMPLETA DE TESTING EN RUST
+================================================================================
+
+================================================================================
+1. INTRODUCCIÓN
+================================================================================
+
+Las pruebas en Rust son funciones que verifican que el código funciona
+correctamente. Todas las pruebas se marcan con el atributo #[test] y se
+organizan dentro de un módulo con #[cfg(test)].
+
+Estructura básica:
+    #[cfg(test)]
+    mod tests {
+        use super::*;  // Importa funciones del módulo padre
+        
+        #[test]
+        fn mi_prueba() {
+            // código de la prueba
+        }
+    }
+
+
+================================================================================
+2. MACROS DE AFIRMACIÓN (ASSERTIONS)
+================================================================================
+
+2.1 assert!()
+--------------
+Verifica que una condición sea verdadera.
+
+Uso:
+    assert!(condicion);
+    assert!(condicion, "mensaje de error personalizado");
+
+Ejemplo:
+    #[test]
+    fn test_mayor_que() {
+        let x = 5;
+        assert!(x > 3);
+        assert!(x > 3, "x debería ser mayor que 3, pero es {}", x);
+    }
+
+
+2.2 assert_eq!()
+-----------------
+Verifica que dos valores sean iguales.
+
+Uso:
+    assert_eq!(valor_obtenido, valor_esperado);
+    assert_eq!(valor_obtenido, valor_esperado, "mensaje");
+
+Ejemplo:
+    #[test]
+    fn test_suma() {
+        let resultado = 2 + 2;
+        assert_eq!(resultado, 4);
+        assert_eq!(resultado, 4, "La suma falló: {} != 4", resultado);
+    }
+
+Nota: Los tipos deben implementar PartialEq y Debug.
+      Para structs personalizados: #[derive(PartialEq, Debug)]
+
+
+2.3 assert_ne!()
+-----------------
+Verifica que dos valores sean DIFERENTES.
+
+Uso:
+    assert_ne!(valor1, valor2);
+
+Ejemplo:
+    #[test]
+    fn test_diferente() {
+        let x = 5;
+        assert_ne!(x, 0);
+    }
+
+
+================================================================================
+3. PROBANDO PANICS CON #[should_panic]
+================================================================================
+
+Usa #[should_panic] cuando ESPERAS que el código entre en pánico.
+
+Uso básico:
+    #[test]
+    #[should_panic]
+    fn test_debe_entrar_en_panico() {
+        panic!("¡Error!");
+    }
+
+Uso con mensaje esperado (más preciso):
+    #[test]
+    #[should_panic(expected = "división por cero")]
+    fn test_division_cero() {
+        dividir(10, 0);  // Debe entrar en pánico con ese mensaje
+    }
+
+Ejemplo completo:
+    fn dividir(a: i32, b: i32) -> i32 {
+        if b == 0 {
+            panic!("No se puede dividir por cero");
+        }
+        a / b
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        #[should_panic(expected = "No se puede dividir por cero")]
+        fn test_panic_division_cero() {
+            dividir(10, 0);
+        }
+    }
+
+
+================================================================================
+4. USANDO Result<T, E> EN PRUEBAS
+================================================================================
+
+En lugar de pánico, puedes devolver Result<T, E> desde las pruebas.
+Ventajas: Más control, puedes usar el operador ?, mejor para errores.
+
+Uso:
+    #[test]
+    fn mi_prueba() -> Result<(), String> {
+        // Si todo va bien: Ok(())
+        // Si algo falla: Err("mensaje")
+    }
+
+Ejemplo completo:
+    fn dividir(a: i32, b: i32) -> Result<i32, String> {
+        if b == 0 {
+            return Err(String::from("División por cero"));
+        }
+        Ok(a / b)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        // Test con Ok: usar operador ?
+        #[test]
+        fn test_division_ok() -> Result<(), String> {
+            let resultado = dividir(10, 2)?;  // Propaga el error si falla
+            assert_eq!(resultado, 5);
+            Ok(())  // Todo bien
+        }
+
+        // Test con Err: verificar el error
+        #[test]
+        fn test_division_error() {
+            let resultado = dividir(10, 0);
+            assert!(resultado.is_err());  // Verifica que sea un error
+            
+            // O más específico:
+            match resultado {
+                Err(msg) => assert_eq!(msg, "División por cero"),
+                Ok(_) => panic!("Debería haber fallado"),
+            }
+        }
+    }
+
+IMPORTANTE: No puedes usar #[should_panic] con Result<T, E>.
+
+
+================================================================================
+5. COMANDOS PARA EJECUTAR PRUEBAS
+================================================================================
+
+5.1 Comando básico
+-------------------
+    cargo test
+
+    Ejecuta TODAS las pruebas en paralelo.
+
+
+5.2 Ejecutar en modo secuencial (una a la vez)
+-----------------------------------------------
+    cargo test -- --test-threads=1
+
+    Útil cuando las pruebas comparten recursos (archivos, bases de datos).
+
+
+5.3 Mostrar salida de println! en pruebas que pasan
+-----------------------------------------------------
+    cargo test -- --show-output
+
+    Por defecto, solo se muestra println! en pruebas que FALLAN.
+    Con esta opción, se muestra en TODAS.
+
+Ejemplo:
+    #[test]
+    fn test_con_output() {
+        println!("Esto solo se ve con --show-output");
+        assert_eq!(2 + 2, 4);
+    }
+
+
+5.4 Ejecutar una prueba específica
+------------------------------------
+    cargo test nombre_de_la_prueba
+
+Ejemplo:
+    cargo test test_division_ok
+
+
+5.5 Ejecutar múltiples pruebas con filtro
+------------------------------------------
+    cargo test palabra_clave
+
+    Ejecuta TODAS las pruebas que contengan esa palabra.
+
+Ejemplo:
+    cargo test division
+    
+    Ejecutará: test_division_ok, test_division_error, test_division_por_cero
+
+
+5.6 Ejecutar pruebas de un módulo
+-----------------------------------
+    cargo test nombre_modulo::
+
+Ejemplo:
+    cargo test tests::
+
+
+================================================================================
+6. IGNORAR PRUEBAS CON #[ignore]
+================================================================================
+
+Usa #[ignore] para pruebas lentas que no quieres ejecutar siempre.
+
+Sintaxis:
+    #[test]
+    #[ignore]
+    fn test_lento() {
+        // prueba que tarda mucho tiempo
+    }
+
+Comandos:
+    cargo test                    # Salta las pruebas ignoradas
+    cargo test -- --ignored       # SOLO ejecuta las pruebas ignoradas
+    cargo test -- --include-ignored  # Ejecuta TODAS (incluidas ignoradas)
+
+Ejemplo completo:
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn test_rapido() {
+            assert_eq!(2 + 2, 4);
+        }
+
+        #[test]
+        #[ignore]
+        fn test_muy_lento() {
+            // simula operación lenta
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            assert!(true);
+        }
+    }
+
+
+================================================================================
+7. EJEMPLO COMPLETO CON TODOS LOS CASOS
+================================================================================
+
+// ============================================================
+// Funciones a probar
+// ============================================================
+
+pub fn sumar(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+pub fn dividir_panic(a: i32, b: i32) -> i32 {
+    if b == 0 {
+        panic!("No se puede dividir por cero");
+    }
+    a / b
+}
+
+pub fn dividir_result(a: i32, b: i32) -> Result<i32, String> {
+    if b == 0 {
+        return Err(String::from("División por cero"));
+    }
+    Ok(a / b)
+}
+
+pub fn operacion_lenta(n: i32) -> i32 {
+    // Simula operación costosa
+    std::thread::sleep(std::time::Duration::from_secs(2));
+    n * 2
+}
+
+// ============================================================
+// Módulo de pruebas
+// ============================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 1. Prueba básica con assert!
+    #[test]
+    fn test_suma_positiva() {
+        let resultado = sumar(2, 3);
+        assert!(resultado > 0);
+        assert!(resultado == 5, "La suma debería ser 5, pero fue {}", resultado);
+    }
+
+    // 2. Prueba con assert_eq!
+    #[test]
+    fn test_suma_exacta() {
+        assert_eq!(sumar(10, 5), 15);
+    }
+
+    // 3. Prueba con assert_ne!
+    #[test]
+    fn test_suma_no_cero() {
+        assert_ne!(sumar(1, 1), 0);
+    }
+
+    // 4. Prueba con #[should_panic]
+    #[test]
+    #[should_panic(expected = "No se puede dividir por cero")]
+    fn test_division_panic() {
+        dividir_panic(10, 0);
+    }
+
+    // 5. Prueba con Result - caso exitoso
+    #[test]
+    fn test_division_result_ok() -> Result<(), String> {
+        let resultado = dividir_result(10, 2)?;
+        assert_eq!(resultado, 5);
+        Ok(())
+    }
+
+    // 6. Prueba con Result - caso error
+    #[test]
+    fn test_division_result_error() {
+        let resultado = dividir_result(10, 0);
+        assert!(resultado.is_err());
+    }
+
+    // 7. Prueba con println! (ver con --show-output)
+    #[test]
+    fn test_con_output() {
+        println!("Ejecutando prueba con salida");
+        let resultado = sumar(2, 2);
+        println!("Resultado: {}", resultado);
+        assert_eq!(resultado, 4);
+    }
+
+    // 8. Prueba ignorada (lenta)
+    #[test]
+    #[ignore]
+    fn test_operacion_lenta() {
+        let resultado = operacion_lenta(5);
+        assert_eq!(resultado, 10);
+    }
+
+    // 9. Múltiples pruebas para filtrar
+    #[test]
+    fn test_suma_uno() {
+        assert_eq!(sumar(1, 0), 1);
+    }
+
+    #[test]
+    fn test_suma_dos() {
+        assert_eq!(sumar(2, 0), 2);
+    }
+}
+
+
+================================================================================
+8. GUÍA RÁPIDA DE COMANDOS
+================================================================================
+
+Comando                              | Descripción
+-------------------------------------|--------------------------------------
+cargo test                           | Ejecuta todas las pruebas (paralelo)
+cargo test -- --test-threads=1       | Ejecuta secuencialmente
+cargo test -- --show-output          | Muestra println! de todas las pruebas
+cargo test nombre_test               | Ejecuta una prueba específica
+cargo test palabra                   | Filtra pruebas con esa palabra
+cargo test -- --ignored              | Solo pruebas ignoradas
+cargo test -- --include-ignored      | Incluye pruebas ignoradas
+cargo test --help                    | Ayuda de cargo test
+cargo test -- --help                 | Ayuda del binario de pruebas
+
+
+================================================================================
+9. BUENAS PRÁCTICAS
+================================================================================
+
+✓ Nombra las pruebas descriptivamente: test_division_por_cero
+✓ Una prueba debe verificar UNA cosa específica
+✓ Usa assert_eq! en lugar de assert!(a == b) para mejores mensajes de error
+✓ Agrega mensajes personalizados a las aserciones cuando sea útil
+✓ Usa #[ignore] para pruebas lentas, no las comentes
+✓ Organiza las pruebas en módulos si tienes muchas
+✓ Usa Result<T, E> para pruebas con manejo de errores complejo
+✓ Usa #[should_panic] solo cuando el pánico sea el comportamiento esperado
+✓ No compartas estado entre pruebas (pueden ejecutarse en paralelo)
+
+
+================================================================================
+10. TABLA COMPARATIVA: #[should_panic] vs Result<T, E>
+================================================================================
+
+Característica          | #[should_panic]       | Result<T, E>
+------------------------|-----------------------|---------------------------
+Manejo de errores       | panic!                | Err(...)
+Control                 | Menos                 | Más flexible
+Operador ?              | No disponible         | Sí, disponible
+Mensaje específico      | Sí (expected)         | Sí (personalizado)
+Uso recomendado         | Errores irrecuperables| Errores manejables
+Estilo                  | Más simple            | Más moderno/idiomático
+
+
+================================================================================
+FIN DE LA GUÍA
+================================================================================
+
+Para más información, consulta: https://doc.rust-lang.org/book/ch11-00-testing.html
