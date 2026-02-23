@@ -9,8 +9,8 @@ use std::process;
 // Traemos la función search y el struct Config desde nuestro propio crate
 // de biblioteca (src/lib.rs). Al separar el código en lib.rs, main.rs
 // necesita importar explícitamente lo que usa.
-use minigrep::Config;
-use minigrep::run;
+use minigrep2::Config;
+use minigrep2::run;
 
 fn main() {
     // Recopilamos todos los argumentos de línea de comandos en un vector.
