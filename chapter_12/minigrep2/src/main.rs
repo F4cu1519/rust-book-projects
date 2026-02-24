@@ -1,47 +1,59 @@
-// Traemos el módulo env de la biblioteca estándar para leer los argumentos
-// de línea de comandos
 use std::env;
-
-// Traemos process para poder salir del programa manualmente con un código
-// de error, en lugar de depender de panic!
 use std::process;
 
-// Traemos la función search y el struct Config desde nuestro propio crate
-// de biblioteca (src/lib.rs). Al separar el código en lib.rs, main.rs
-// necesita importar explícitamente lo que usa.
+// Importamos Config y run desde nuestro crate de biblioteca (lib.rs).
+// Al separar la lógica en lib.rs, main.rs queda como un punto de entrada
+// liviano que solo orquesta las piezas, sin contener lógica real.
 use minigrep2::Config;
 use minigrep2::run;
 
 fn main() {
-    // Recopilamos todos los argumentos de línea de comandos en un vector.
-    // env::args() devuelve un iterador, y collect() lo convierte en Vec<String>.
-    // El primer elemento (índice 0) siempre es el nombre del binario.
+    // env::args() devuelve un iterador sobre los argumentos de línea de
+    // comandos. collect() lo convierte en Vec<String>.
+    // El índice 0 siempre es el nombre del binario (ej: "minigrep"),
+    // los argumentos del usuario empiezan en el índice 1.
     let args: Vec<String> = env::args().collect();
 
-    // Config::build reemplaza a Config::new porque la convención en Rust es
-    // que new() nunca falla. build() en cambio devuelve un Result, lo que
-    // nos permite manejar el error de forma controlada.
+    // Config::build() devuelve un Result. Usamos unwrap_or_else() para
+    // manejar el caso de error sin usar panic!.
     //
-    // unwrap_or_else nos permite definir qué hacer si el Result es Err,
-    // sin usar panic!. Recibe un cierre (closure) que se ejecuta solo
-    // si hay error. El valor interno del Err (nuestro mensaje de texto)
-    // llega al cierre como el argumento |err|.
+    // unwrap_or_else recibe un cierre (closure): una función anónima
+    // definida con |err| { ... } que solo se ejecuta si el Result es Err.
+    // El valor dentro del Err (nuestro mensaje de texto) llega al cierre
+    // como el argumento `err`.
     let config = Config::build(&args).unwrap_or_else(|err| {
-        // Imprimimos el error con un mensaje claro para el usuario final
-        println!("Problem parsing arguments: {err}");
+        // Mensaje claro y amigable para el usuario final,
+        // sin el ruido técnico que generaría un panic!
+        eprintln!("Problem parsing arguments: {err}");
 
-        // Salimos del programa con código 1, que por convención indica
-        // que el proceso terminó con un error. Esto es más limpio que
-        // panic!, que imprime información técnica innecesaria para el usuario.
+        // Salimos con código 1, que por convención indica error.
+        // Es más limpio que panic!, que imprime stack traces y mensajes
+        // internos que confunden a los usuarios.
         process::exit(1);
     });
 
-    // Usamos if let para manejar solo el caso Err del Result que devuelve run().
-    // No usamos unwrap_or_else aquí porque run() devuelve Ok(()) en el caso
-    // exitoso, es decir, no hay ningún valor útil que extraer del Ok,
-    // solo nos importa saber si hubo un error.
+    // Usamos if let en lugar de unwrap_or_else porque run() devuelve
+    // Ok(()) en el caso exitoso: no hay ningún valor útil que extraer,
+    // solo nos importa detectar si hubo un error.
     if let Err(e) = run(config) {
-        println!("Application error: {e}");
+        eprintln!("Application error: {e}");
         process::exit(1);
     }
 }
+
+//    
+//    El flujo completo del programa es:
+//    ```
+//    main()
+//      │
+//      ├── Lee args de línea de comandos
+//      ├── Config::build(&args)  →  lee también IGNORE_CASE del entorno
+//      │       └── Err  →  imprime error y process::exit(1)
+//      │
+//      └── run(config)
+//              ├── Lee el archivo con fs::read_to_string
+//              ├── Elige search() o search_case_insensitive() según ignore_case
+//              ├── Imprime cada línea que coincide
+//              └── Err  →  main imprime error y process::exit(1)
+//  
+//    
