@@ -1,0 +1,564 @@
+================================================================================
+                ORGANIZACIÓN DE TESTS EN RUST
+================================================================================
+
+================================================================================
+1. INTRODUCCIÓN
+================================================================================
+
+La comunidad de Rust piensa en los tests en términos de dos categorías 
+principales:
+
+    1. UNIT TESTS (Pruebas Unitarias)
+       - Pequeñas y enfocadas
+       - Prueban un módulo en aislamiento
+       - Pueden probar interfaces privadas
+       - Van en el mismo archivo que el código
+
+    2. INTEGRATION TESTS (Pruebas de Integración)
+       - Completamente externas a tu biblioteca
+       - Usan el código como lo haría cualquier usuario externo
+       - Solo usan la API pública
+       - Pueden ejercitar múltiples módulos por test
+       - Van en un directorio separado llamado 'tests'
+
+
+================================================================================
+2. PRUEBAS UNITARIAS (UNIT TESTS)
+================================================================================
+
+2.1 Propósito
+--------------
+Probar cada unidad de código en aislamiento del resto del código para 
+identificar rápidamente dónde el código funciona o no como se espera.
+
+2.2 Ubicación
+--------------
+Se colocan en el directorio 'src', en el MISMO ARCHIVO con el código que 
+están probando.
+
+2.3 Convención
+---------------
+Crear un módulo llamado 'tests' en cada archivo para contener las funciones 
+de prueba y anotar el módulo con #[cfg(test)].
+
+
+2.4 El Atributo #[cfg(test)]
+------------------------------
+
+Ejemplo básico:
+
+    pub fn add(left: u64, right: u64) -> u64 {
+        left + right
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn it_works() {
+            let result = add(2, 2);
+            assert_eq!(result, 4);
+        }
+    }
+
+¿Qué hace #[cfg(test)]?
+    - cfg = "configuration" (configuración)
+    - Le dice a Rust que compile y ejecute el código de prueba SOLO cuando 
+      ejecutas 'cargo test'
+    - NO se compila cuando ejecutas 'cargo build'
+    - Ahorra tiempo de compilación
+    - Ahorra espacio en el binario resultante
+
+Beneficios:
+    ✓ Reduce el tamaño del ejecutable final
+    ✓ Acelera las compilaciones de producción
+    ✓ Incluye funciones auxiliares dentro del módulo
+    ✓ Todo el módulo se excluye del binario final
+
+
+2.5 Probando Funciones Privadas
+---------------------------------
+
+Rust PERMITE probar funciones privadas (a diferencia de otros lenguajes).
+
+Ejemplo:
+
+    // Función pública
+    pub fn add_two(a: u64) -> u64 {
+        internal_adder(a, 2)
+    }
+
+    // Función privada (sin 'pub')
+    fn internal_adder(left: u64, right: u64) -> u64 {
+        left + right
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;  // Importa TODO del módulo padre
+
+        #[test]
+        fn internal() {
+            // Puedes probar la función privada directamente
+            let result = internal_adder(2, 2);
+            assert_eq!(result, 4);
+        }
+    }
+
+¿Por qué funciona?
+    - Los tests son código Rust normal
+    - El módulo 'tests' es un módulo hijo
+    - Los módulos hijo pueden acceder a items del módulo padre
+    - 'use super::*' trae todo al scope
+
+¿Debería probar funciones privadas?
+    - Es un debate en la comunidad de testing
+    - Rust te lo permite, pero no te obliga
+    - Depende de tu filosofía de testing
+
+
+================================================================================
+3. PRUEBAS DE INTEGRACIÓN (INTEGRATION TESTS)
+================================================================================
+
+3.1 Propósito
+--------------
+Probar si muchas partes de tu biblioteca funcionan juntas correctamente.
+Unidades de código que funcionan bien individualmente pueden tener problemas
+cuando se integran.
+
+3.2 Características
+--------------------
+    - Completamente externas a tu biblioteca
+    - Usan SOLO la API pública
+    - Simulan cómo un usuario usaría tu crate
+    - No pueden acceder a funciones privadas
+    - Cada archivo de test es un crate separado
+
+
+3.3 El Directorio 'tests'
+---------------------------
+
+Estructura del proyecto:
+
+    mi_proyecto/
+    ├── Cargo.lock
+    ├── Cargo.toml
+    ├── src/
+    │   └── lib.rs          ← Código de la biblioteca
+    └── tests/              ← Tests de integración
+        └── integration_test.rs
+
+IMPORTANTE: 
+    - El directorio 'tests' debe estar al mismo nivel que 'src'
+    - Cargo busca automáticamente tests en este directorio
+    - Puedes crear tantos archivos de test como quieras
+    - Cada archivo se compila como un crate individual
+
+
+3.4 Creando un Test de Integración
+------------------------------------
+
+Paso 1: Crea el directorio 'tests'
+Paso 2: Crea un archivo (ej: tests/integration_test.rs)
+Paso 3: Escribe tus tests
+
+Archivo: tests/integration_test.rs
+
+    use adder::add_two;  // Importa desde tu crate
+
+    #[test]
+    fn it_adds_two() {
+        let result = add_two(2);
+        assert_eq!(result, 4);
+    }
+
+Diferencias con Unit Tests:
+    ✗ NO necesitas #[cfg(test)] (Cargo maneja esto automáticamente)
+    ✗ NO usas 'mod tests'
+    ✓ SÍ necesitas importar tu crate con 'use'
+    ✓ Solo puedes usar funciones públicas
+
+
+3.5 Salida de 'cargo test'
+----------------------------
+
+Cuando ejecutas 'cargo test', verás tres secciones:
+
+    $ cargo test
+    
+    Running unittests src/lib.rs          ← Sección 1: Unit tests
+    running 1 test
+    test tests::internal ... ok
+
+    Running tests/integration_test.rs     ← Sección 2: Integration tests
+    running 1 test
+    test it_adds_two ... ok
+
+    Doc-tests adder                       ← Sección 3: Doc tests
+    running 0 tests
+
+IMPORTANTE:
+    - Si un test unitario falla, los tests de integración NO se ejecutan
+    - Cada archivo en 'tests/' tiene su propia sección
+
+
+3.6 Ejecutar un Archivo de Test Específico
+--------------------------------------------
+
+Para ejecutar solo un archivo de integración específico:
+
+    cargo test --test nombre_archivo
+
+Ejemplo:
+    cargo test --test integration_test
+
+Esto ejecuta SOLO los tests en tests/integration_test.rs
+
+
+================================================================================
+4. SUBMÓDULOS EN TESTS DE INTEGRACIÓN
+================================================================================
+
+4.1 El Problema
+----------------
+
+Si creas 'tests/common.rs' con funciones auxiliares:
+
+    tests/common.rs:
+        pub fn setup() {
+            // código de configuración
+        }
+
+Cargo lo tratará como un archivo de test y aparecerá en la salida:
+
+    Running tests/common.rs               ← NO QUEREMOS ESTO
+    running 0 tests
+
+
+4.2 La Solución: Subdirectorios
+---------------------------------
+
+Usa la convención de subdirectorio/mod.rs:
+
+Estructura INCORRECTA:
+    tests/
+    ├── common.rs              ← Tratado como test file
+    └── integration_test.rs
+
+Estructura CORRECTA:
+    tests/
+    ├── common/
+    │   └── mod.rs             ← NO tratado como test file
+    └── integration_test.rs
+
+Archivo: tests/common/mod.rs
+
+    pub fn setup() {
+        // código de configuración compartido
+    }
+
+
+4.3 Usando el Módulo Común
+----------------------------
+
+Archivo: tests/integration_test.rs
+
+    use adder::add_two;
+    
+    mod common;  // Importa el módulo común
+
+    #[test]
+    fn it_adds_two() {
+        common::setup();  // Usa la función auxiliar
+        
+        let result = add_two(2);
+        assert_eq!(result, 4);
+    }
+
+Ventajas:
+    ✓ 'common' no aparece en la salida de tests
+    ✓ El código auxiliar está organizado
+    ✓ Puedes reutilizar código entre tests
+    ✓ Los archivos en subdirectorios de 'tests/' no se compilan como 
+      crates separados
+
+
+================================================================================
+5. TESTS DE INTEGRACIÓN PARA BINARIOS
+================================================================================
+
+5.1 El Problema
+----------------
+
+Si tu proyecto es un BINARY CRATE (solo tiene src/main.rs, sin src/lib.rs):
+    ✗ NO puedes crear tests de integración en el directorio 'tests'
+    ✗ NO puedes importar funciones de src/main.rs con 'use'
+
+Razón:
+    - Solo los library crates exponen funciones que otros crates pueden usar
+    - Los binary crates están diseñados para ejecutarse por sí solos
+
+
+5.2 La Solución: Separar Lógica en lib.rs
+-------------------------------------------
+
+Estructura RECOMENDADA para proyectos binarios:
+
+    mi_proyecto/
+    ├── Cargo.toml
+    ├── src/
+    │   ├── main.rs     ← Código mínimo, solo llama a lib.rs
+    │   └── lib.rs      ← Lógica principal aquí
+    └── tests/
+        └── integration_test.rs
+
+Archivo: src/lib.rs
+    // Toda la lógica importante aquí
+    pub fn run_app() {
+        // lógica del programa
+    }
+
+Archivo: src/main.rs
+    use mi_proyecto::run_app;
+
+    fn main() {
+        run_app();
+    }
+
+Archivo: tests/integration_test.rs
+    use mi_proyecto::run_app;
+
+    #[test]
+    fn test_app() {
+        // Puedes probar run_app porque está en lib.rs
+    }
+
+Ventajas:
+    ✓ Los tests de integración pueden probar la lógica importante
+    ✓ El código en main.rs es mínimo y no necesita muchos tests
+    ✓ La funcionalidad importante está disponible para testing
+
+
+================================================================================
+6. ESTRUCTURA COMPLETA DE UN PROYECTO CON TESTS
+================================================================================
+
+mi_biblioteca/
+├── Cargo.lock
+├── Cargo.toml
+├── src/
+│   ├── lib.rs              ← Código principal de la biblioteca
+│   │   ├── pub fn suma()
+│   │   ├── fn privada()
+│   │   └── #[cfg(test)] mod tests { ... }  ← Unit tests
+│   │
+│   ├── modulo1.rs
+│   │   └── #[cfg(test)] mod tests { ... }  ← Unit tests
+│   │
+│   └── modulo2.rs
+│       └── #[cfg(test)] mod tests { ... }  ← Unit tests
+│
+└── tests/                  ← Integration tests
+    ├── common/
+    │   └── mod.rs          ← Funciones auxiliares compartidas
+    ├── test_basicos.rs     ← Tests de integración básicos
+    └── test_avanzados.rs   ← Tests de integración avanzados
+
+
+================================================================================
+7. EJEMPLO COMPLETO
+================================================================================
+
+7.1 Código de la Biblioteca
+-----------------------------
+
+Archivo: src/lib.rs
+
+    // Función pública - API de la biblioteca
+    pub fn add_two(a: u64) -> u64 {
+        internal_adder(a, 2)
+    }
+
+    // Función privada - implementación interna
+    fn internal_adder(left: u64, right: u64) -> u64 {
+        left + right
+    }
+
+    // ═══════════════════════════════════════════════
+    // UNIT TESTS - mismo archivo
+    // ═══════════════════════════════════════════════
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        // Test de función pública
+        #[test]
+        fn test_add_two() {
+            assert_eq!(add_two(3), 5);
+        }
+
+        // Test de función privada (¡Rust lo permite!)
+        #[test]
+        fn test_internal_adder() {
+            assert_eq!(internal_adder(2, 2), 4);
+        }
+    }
+
+
+7.2 Tests de Integración
+--------------------------
+
+Archivo: tests/integration_test.rs
+
+    // Importamos el crate
+    use mi_biblioteca::add_two;
+
+    // Importamos funciones auxiliares
+    mod common;
+
+    #[test]
+    fn it_integrates_well() {
+        common::setup();  // Configuración común
+        
+        // Solo podemos usar la API pública
+        let result = add_two(5);
+        assert_eq!(result, 7);
+    }
+
+    #[test]
+    fn another_integration_test() {
+        // Más tests de integración
+        assert_eq!(add_two(100), 102);
+    }
+
+
+7.3 Módulo Auxiliar Común
+---------------------------
+
+Archivo: tests/common/mod.rs
+
+    // Funciones auxiliares compartidas entre tests
+    pub fn setup() {
+        println!("Configurando el ambiente de test...");
+        // inicializar bases de datos de test, archivos, etc.
+    }
+
+    pub fn teardown() {
+        println!("Limpiando después del test...");
+    }
+
+
+================================================================================
+8. COMANDOS ÚTILES
+================================================================================
+
+Comando                              | Descripción
+-------------------------------------|--------------------------------------
+cargo test                           | Ejecuta todos los tests
+cargo test --lib                     | Solo unit tests (lib.rs)
+cargo test --test archivo            | Solo un archivo de integración
+cargo test --test '*'                | Todos los tests de integración
+cargo test nombre_funcion            | Test específico (unit o integration)
+cargo test modulo::                  | Todos los tests de un módulo
+
+
+================================================================================
+9. COMPARACIÓN: UNIT TESTS vs INTEGRATION TESTS
+================================================================================
+
+Característica          | Unit Tests            | Integration Tests
+------------------------|-----------------------|---------------------
+Ubicación               | src/                  | tests/
+En mismo archivo        | Sí                    | No
+Necesita #[cfg(test)]   | Sí                    | No
+Acceso a privados       | Sí                    | No
+Importa el crate        | No (usa super::*)     | Sí (use crate::)
+Cada archivo es crate   | No                    | Sí
+Propósito               | Probar partes aisladas| Probar integración
+Velocidad               | Más rápidos           | Más lentos
+Alcance                 | Interno               | API pública
+
+
+================================================================================
+10. BUENAS PRÁCTICAS
+================================================================================
+
+Unit Tests:
+    ✓ Coloca los tests en el mismo archivo que el código
+    ✓ Usa #[cfg(test)] para excluirlos del binario
+    ✓ Prueba tanto funciones públicas como privadas
+    ✓ Enfócate en casos edge y lógica compleja
+    ✓ Mantén los tests pequeños y enfocados
+
+Integration Tests:
+    ✓ Simula cómo un usuario usaría tu biblioteca
+    ✓ Prueba flujos completos de trabajo
+    ✓ Organiza tests relacionados en el mismo archivo
+    ✓ Usa tests/common/mod.rs para código compartido
+    ✓ Documenta el propósito de cada archivo de test
+
+General:
+    ✓ Escribe ambos tipos de tests
+    ✓ Los unit tests encuentran bugs específicos rápido
+    ✓ Los integration tests aseguran que todo funciona junto
+    ✓ Si tienes un binario, mueve la lógica a lib.rs
+
+
+================================================================================
+11. DECISIONES DE DISEÑO
+================================================================================
+
+¿Cuándo usar Unit Tests?
+    → Probar funciones individuales
+    → Verificar lógica compleja
+    → Casos edge
+    → Funciones privadas
+    → Desarrollo rápido (feedback inmediato)
+
+¿Cuándo usar Integration Tests?
+    → Probar la API pública completa
+    → Verificar flujos de trabajo completos
+    → Asegurar que módulos trabajan juntos
+    → Simular uso real de la biblioteca
+    → Antes de releases
+
+¿Probar funciones privadas?
+    Argumentos a favor:
+        • Mejor cobertura de código
+        • Encuentra bugs más rápido
+        • Verifica implementación interna
+    
+    Argumentos en contra:
+        • Acopla tests a la implementación
+        • Dificulta refactorización
+        • La API pública es lo importante
+    
+    Rust te da la libertad de elegir tu filosofía.
+
+
+================================================================================
+12. RESUMEN
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Rust proporciona un sistema de testing completo y flexible:       │
+│                                                                     │
+│  • Unit Tests → Prueban partes en aislamiento                      │
+│  • Integration Tests → Prueban la integración de componentes       │
+│  • Doc Tests → Prueban ejemplos en documentación                   │
+│                                                                     │
+│  Ambos tipos son importantes para asegurar que tu código           │
+│  funcione correctamente, tanto por separado como en conjunto.      │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+FIN DE LA GUÍA
+================================================================================
+
+Para más información: 
+    - https://doc.rust-lang.org/book/ch11-03-test-organization.html
+    - https://doc.rust-lang.org/rust-by-example/testing.html
