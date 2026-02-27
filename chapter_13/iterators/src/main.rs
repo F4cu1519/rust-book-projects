@@ -106,7 +106,7 @@ fn shoes_in_size(shoes: Vec<Shoe>, shoe_size: u32) -> Vec<Shoe> {
         .filter(|s| s.size == shoe_size) // captura shoe_size
         .collect()
 }
-
+//a
 fn filter_ejemplo() {
     let shoes = vec![
         Shoe { size: 10, style: String::from("sneaker") },
