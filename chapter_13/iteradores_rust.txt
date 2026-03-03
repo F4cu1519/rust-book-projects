@@ -1,0 +1,315 @@
+================================================================
+  ITERADORES EN RUST — GUÍA DE LOS MÁS USADOS
+================================================================
+
+
+----------------------------------------------------------------
+1. .iter()
+----------------------------------------------------------------
+Empieza a trabajar con una colección sin consumirla.
+Devuelve referencias (&T), el Vec original sigue existiendo.
+
+    let v = vec![1, 2, 3];
+    for n in v.iter() {
+        println!("{n}"); // n es &i32
+    }
+    // v sigue siendo válido aquí
+
+
+----------------------------------------------------------------
+2. .into_iter()
+----------------------------------------------------------------
+Igual que iter() pero CONSUME la colección.
+Devuelve los valores directos (T), no referencias.
+Útil cuando ya no necesitás el Vec original.
+
+    let v = vec![1, 2, 3];
+    for n in v.into_iter() {
+        println!("{n}"); // n es i32
+    }
+    // v ya NO existe aquí, fue consumido
+
+
+----------------------------------------------------------------
+3. .filter(|x| condición)
+----------------------------------------------------------------
+Descarta los elementos que no cumplen la condición.
+Recibe una clausura que devuelve true/false.
+
+    let numeros = vec![1, 2, 3, 4, 5, 6];
+
+    let pares: Vec<i32> = numeros.iter()
+        .filter(|n| *n % 2 == 0)
+        .copied()
+        .collect();
+    // pares = [2, 4, 6]
+
+
+----------------------------------------------------------------
+4. .map(|x| transformación)
+----------------------------------------------------------------
+Transforma cada elemento en otra cosa.
+No modifica el original, crea valores nuevos.
+
+    let nombres = vec!["ana", "luis", "pedro"];
+
+    let mayusculas: Vec<String> = nombres.iter()
+        .map(|n| n.to_uppercase())
+        .collect();
+    // mayusculas = ["ANA", "LUIS", "PEDRO"]
+
+
+----------------------------------------------------------------
+5. .collect()
+----------------------------------------------------------------
+Empaqueta el iterador en una colección concreta.
+El tipo de colección se infiere o se anota explícitamente.
+Siempre va al final de una cadena de iteradores.
+
+    let v: Vec<i32> = (1..=5).collect();
+    // v = [1, 2, 3, 4, 5]
+
+    let s: String = vec!['h','o','l','a'].iter().collect();
+    // s = "hola"
+
+
+----------------------------------------------------------------
+6. .find(|x| condición)
+----------------------------------------------------------------
+Devuelve el PRIMERO que cumple la condición.
+Devuelve Option<&T>: Some(elemento) o None.
+Para el recorrido en cuanto lo encuentra (eficiente).
+
+    let edades = vec![15, 17, 22, 13, 30];
+
+    let mayor = edades.iter().find(|e| **e >= 18);
+    // mayor = Some(22)
+
+    let menor = edades.iter().find(|e| **e < 10);
+    // menor = None
+
+
+----------------------------------------------------------------
+7. .any(|x| condición)
+----------------------------------------------------------------
+Devuelve true si AL MENOS UN elemento cumple la condición.
+Para el recorrido en cuanto encuentra el primero.
+
+    let notas = vec![4, 6, 7, 8];
+
+    let hay_desaprobado = notas.iter().any(|n| *n < 6);
+    // hay_desaprobado = true
+
+    let hay_diez = notas.iter().any(|n| *n == 10);
+    // hay_diez = false
+
+
+----------------------------------------------------------------
+8. .all(|x| condición)
+----------------------------------------------------------------
+Devuelve true si TODOS los elementos cumplen la condición.
+Para el recorrido en cuanto encuentra el primero que falla.
+
+    let notas = vec![6, 7, 8, 9, 10];
+
+    let todos_aprobaron = notas.iter().all(|n| *n >= 6);
+    // todos_aprobaron = true
+
+    let todos_sobre_8 = notas.iter().all(|n| *n > 8);
+    // todos_sobre_8 = false
+
+
+----------------------------------------------------------------
+9. .count()
+----------------------------------------------------------------
+Cuenta cuántos elementos quedan en el iterador.
+Muy útil combinado con .filter().
+
+    let texto = "hola mundo hola rust hola";
+
+    let cantidad = texto.split_whitespace()
+        .filter(|p| *p == "hola")
+        .count();
+    // cantidad = 3
+
+
+----------------------------------------------------------------
+10. .sum()
+----------------------------------------------------------------
+Suma todos los elementos del iterador.
+Requiere anotar el tipo del resultado.
+
+    let numeros = vec![1, 2, 3, 4, 5];
+
+    let total: i32 = numeros.iter().sum();
+    // total = 15
+
+    let suma_pares: i32 = numeros.iter()
+        .filter(|n| *n % 2 == 0)
+        .sum();
+    // suma_pares = 6
+
+
+----------------------------------------------------------------
+11. .flatten()
+----------------------------------------------------------------
+Aplana una lista de listas en una sola lista.
+
+    let grupos = vec![
+        vec![1, 2, 3],
+        vec![4, 5],
+        vec![6, 7],
+    ];
+
+    let todos: Vec<i32> = grupos.iter()
+        .flatten()
+        .copied()
+        .collect();
+    // todos = [1, 2, 3, 4, 5, 6, 7]
+
+
+----------------------------------------------------------------
+12. .enumerate()
+----------------------------------------------------------------
+Adjunta el índice a cada elemento.
+Devuelve tuplas (índice, elemento).
+
+    let frutas = vec!["manzana", "pera", "uva"];
+
+    for (i, fruta) in frutas.iter().enumerate() {
+        println!("{i}: {fruta}");
+    }
+    // 0: manzana
+    // 1: pera
+    // 2: uva
+
+
+----------------------------------------------------------------
+13. .zip()
+----------------------------------------------------------------
+Une dos iteradores en uno de pares (tuplas).
+Se detiene cuando el más corto se agota.
+
+    let nombres = vec!["Ana", "Luis", "Pedro"];
+    let edades  = vec![28, 34, 22];
+
+    let personas: Vec<(&str, i32)> = nombres.iter()
+        .copied()
+        .zip(edades.iter().copied())
+        .collect();
+    // personas = [("Ana", 28), ("Luis", 34), ("Pedro", 22)]
+
+
+----------------------------------------------------------------
+14. .take(n)
+----------------------------------------------------------------
+Toma solo los primeros N elementos.
+
+    let numeros = vec![10, 20, 30, 40, 50];
+
+    let primeros_tres: Vec<i32> = numeros.iter()
+        .copied()
+        .take(3)
+        .collect();
+    // primeros_tres = [10, 20, 30]
+
+
+----------------------------------------------------------------
+15. .skip(n)
+----------------------------------------------------------------
+Omite los primeros N elementos.
+
+    let numeros = vec![10, 20, 30, 40, 50];
+
+    let sin_los_dos_primeros: Vec<i32> = numeros.iter()
+        .copied()
+        .skip(2)
+        .collect();
+    // sin_los_dos_primeros = [30, 40, 50]
+
+
+----------------------------------------------------------------
+16. .chain()
+----------------------------------------------------------------
+Encadena dos iteradores como si fueran uno solo.
+
+    let a = vec![1, 2, 3];
+    let b = vec![4, 5, 6];
+
+    let juntos: Vec<i32> = a.iter()
+        .chain(b.iter())
+        .copied()
+        .collect();
+    // juntos = [1, 2, 3, 4, 5, 6]
+
+
+----------------------------------------------------------------
+17. .position(|x| condición)
+----------------------------------------------------------------
+Devuelve el ÍNDICE del primero que cumple la condición.
+Devuelve Option<usize>: Some(índice) o None.
+
+    let letras = vec!['a', 'b', 'c', 'd'];
+
+    let pos = letras.iter().position(|l| *l == 'c');
+    // pos = Some(2)
+
+
+----------------------------------------------------------------
+18. .max() y .min()
+----------------------------------------------------------------
+Devuelven el mayor y menor elemento.
+Devuelven Option<&T>.
+
+    let numeros = vec![3, 1, 4, 1, 5, 9, 2, 6];
+
+    let mayor = numeros.iter().max(); // Some(9)
+    let menor = numeros.iter().min(); // Some(1)
+
+
+----------------------------------------------------------------
+19. .fold(valor_inicial, |acumulador, x| ...)
+----------------------------------------------------------------
+El más flexible: acumula todos los elementos en un resultado.
+.sum(), .count() y otros son casos especiales de .fold().
+
+    let numeros = vec![1, 2, 3, 4, 5];
+
+    // Multiplicar todos:
+    let producto = numeros.iter().fold(1, |acc, n| acc * n);
+    // producto = 120
+
+    // Construir un string:
+    let palabras = vec!["hola", "mundo", "rust"];
+    let frase = palabras.iter().fold(String::new(), |acc, p| {
+        if acc.is_empty() { p.to_string() }
+        else { acc + " " + p }
+    });
+    // frase = "hola mundo rust"
+
+
+================================================================
+  REGLA PRÁCTICA: CUÁNDO USAR CADA UNO
+================================================================
+
+  Quiero...                          Usar...
+  ---------------------------------  ----------------------
+  Quedarme con algunos elementos     .filter()
+  Transformar cada elemento          .map()
+  Buscar el primero que cumple algo  .find()
+  Saber si alguno cumple algo        .any()
+  Saber si todos cumplen algo        .all()
+  Contar cuántos cumplen algo        .filter().count()
+  Sumar todos                        .sum()
+  Aplanar listas de listas           .flatten()
+  Saber el índice de cada uno        .enumerate()
+  Unir dos listas en pares           .zip()
+  Tomar solo los primeros N          .take(n)
+  Saltear los primeros N             .skip(n)
+  Unir dos colecciones               .chain()
+  Encontrar el índice de un elemento .position()
+  El mayor / menor                   .max() / .min()
+  Acumular con lógica propia         .fold()
+  Empaquetar el resultado            .collect()
+
+================================================================
