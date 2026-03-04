@@ -1,0 +1,326 @@
+================================================================
+  EL LENGUAJE DE PROGRAMACIÓN RUST
+  Capítulo 14 — Más sobre Cargo y Crates.io
+================================================================
+
+----------------------------------------------------------------
+  14.1 — Personalización de Compilaciones con Perfiles de Lanzamiento
+----------------------------------------------------------------
+
+En Rust, los "release profiles" (perfiles de lanzamiento) son perfiles
+predefinidos y personalizables que permiten al programador tener mayor
+control sobre las opciones de compilación. Cada perfil se configura de
+forma independiente.
+
+PERFILES PRINCIPALES
+--------------------
+Cargo tiene dos perfiles principales:
+
+  - dev     → Se usa con `cargo build`
+              Optimizado para velocidad de compilación durante el desarrollo.
+
+  - release → Se usa con `cargo build --release`
+              Optimizado para rendimiento del programa final.
+
+Puedes ver cuál perfil se usa en la salida de compilación:
+
+  $ cargo build
+      Finished `dev` profile [unoptimized + debuginfo]
+  $ cargo build --release
+      Finished `release` profile [optimized]
+
+EL AJUSTE opt-level
+-------------------
+Controla cuántas optimizaciones aplica Rust al compilar (rango: 0 a 3).
+Más optimizaciones = mayor tiempo de compilación, pero código más rápido.
+
+Valores predeterminados:
+
+  [profile.dev]
+  opt-level = 0       ← Pocas optimizaciones, compilación rápida
+
+  [profile.release]
+  opt-level = 3       ← Máximas optimizaciones, ejecución rápida
+
+PERSONALIZANDO PERFILES EN Cargo.toml
+--------------------------------------
+Puedes sobreescribir cualquier valor agregando una sección [profile.*]:
+
+  [profile.dev]
+  opt-level = 1       ← Más optimizaciones que 0, menos que 3
+
+Para la lista completa de opciones, consulta:
+https://doc.rust-lang.org/cargo/reference/profiles.html
+
+
+----------------------------------------------------------------
+  14.2 — Publicando un Crate en Crates.io
+----------------------------------------------------------------
+
+Además de usar paquetes de crates.io como dependencias, puedes compartir
+tu propio código publicando paquetes. Crates.io distribuye el código fuente
+y aloja principalmente proyectos de código abierto.
+
+COMENTARIOS DE DOCUMENTACIÓN
+-----------------------------
+Rust tiene un tipo especial de comentario para generar documentación HTML.
+Usa tres barras (///) en lugar de dos, y admite formato Markdown.
+Se colocan justo antes del elemento que documentan.
+
+Ejemplo:
+
+  /// Suma uno al número dado.
+  ///
+  /// # Ejemplos
+  ///
+  /// ```
+  /// let arg = 5;
+  /// let answer = my_crate::add_one(arg);
+  /// assert_eq!(6, answer);
+  /// ```
+  pub fn add_one(x: i32) -> i32 {
+      x + 1
+  }
+
+Comandos útiles:
+  - `cargo doc`         → Genera la documentación HTML en target/doc
+  - `cargo doc --open`  → Genera y abre la documentación en el navegador
+
+SECCIONES COMÚNMENTE USADAS EN LA DOCUMENTACIÓN
+-------------------------------------------------
+  - Panics:  Escenarios en los que la función podría entrar en pánico.
+  - Errors:  Tipos de errores que puede retornar un Result.
+  - Safety:  Explicación de por qué una función es `unsafe`.
+
+COMENTARIOS DE DOCUMENTACIÓN COMO PRUEBAS
+------------------------------------------
+Los bloques de código en los comentarios se ejecutan como pruebas al
+correr `cargo test`. Esto garantiza que los ejemplos siempre estén
+sincronizados con el código real.
+
+COMENTARIOS PARA EL CRATE COMPLETO (//!)
+-----------------------------------------
+El estilo //! documenta el elemento que contiene el comentario
+(en lugar del que le sigue). Se usa al inicio de src/lib.rs para
+describir el crate como un todo:
+
+  //! # Mi Crate
+  //!
+  //! `my_crate` es una colección de utilidades para facilitar
+  //! ciertos cálculos.
+
+EXPORTANDO UNA API PÚBLICA CONVENIENTE CON pub use
+----------------------------------------------------
+Si tu crate tiene una jerarquía de módulos profunda, los usuarios
+podrían tener que escribir rutas largas como:
+
+  use my_crate::some_module::another_module::UsefulType;
+
+Con `pub use` puedes re-exportar elementos al nivel superior sin
+cambiar la estructura interna:
+
+  pub use self::kinds::PrimaryColor;
+  pub use self::kinds::SecondaryColor;
+  pub use self::utils::mix;
+
+Así los usuarios simplemente escriben:
+
+  use art::PrimaryColor;
+  use art::mix;
+
+CONFIGURANDO UNA CUENTA EN CRATES.IO
+--------------------------------------
+1. Crea una cuenta en https://crates.io/ (requiere cuenta de GitHub).
+2. Obtén tu API key en https://crates.io/me/
+3. Guarda el token localmente:
+
+   $ cargo login
+   abcdefghijklmnopqrstuvwxyz012345
+
+El token se guarda en ~/.cargo/credentials.toml
+¡No lo compartas con nadie! Si lo haces, revócalo de inmediato.
+
+METADATOS REQUERIDOS EN Cargo.toml ANTES DE PUBLICAR
+------------------------------------------------------
+  - name        → Nombre único (se asigna por orden de llegada en crates.io)
+  - description → Una o dos oraciones (aparece en los resultados de búsqueda)
+  - license     → Identificador SPDX (ej: "MIT" o "MIT OR Apache-2.0")
+
+Ejemplo de Cargo.toml listo para publicar:
+
+  [package]
+  name = "guessing_game"
+  version = "0.1.0"
+  edition = "2024"
+  description = "Un juego donde adivinas el número elegido por la computadora."
+  license = "MIT OR Apache-2.0"
+
+  [dependencies]
+
+PUBLICANDO EN CRATES.IO
+------------------------
+  $ cargo publish
+
+IMPORTANTE: Una publicación es permanente. La versión no puede
+sobreescribirse ni eliminarse (crates.io actúa como archivo permanente).
+
+PUBLICANDO UNA NUEVA VERSIÓN
+------------------------------
+Actualiza el campo `version` en Cargo.toml siguiendo las reglas de
+Versionado Semántico (https://semver.org/) y vuelve a ejecutar:
+
+  $ cargo publish
+
+DESCONTINUANDO VERSIONES CON YANK
+-----------------------------------
+Si una versión está rota, puedes evitar que nuevos proyectos la usen
+sin romper los proyectos existentes:
+
+  $ cargo yank --vers 1.0.1          ← Aplica el yank
+  $ cargo yank --vers 1.0.1 --undo   ← Deshace el yank
+
+IMPORTANTE: Un yank NO elimina el código. Si subiste secretos
+accidentalmente, debes revocarlos de inmediato.
+
+
+----------------------------------------------------------------
+  14.3 — Espacios de Trabajo de Cargo (Workspaces)
+----------------------------------------------------------------
+
+Un workspace permite gestionar múltiples paquetes relacionados que se
+desarrollan en conjunto, compartiendo el mismo Cargo.lock y directorio
+de salida (target/).
+
+CREANDO UN WORKSPACE
+---------------------
+1. Crea un directorio raíz y un Cargo.toml sin sección [package]:
+
+   [workspace]
+   resolver = "3"
+
+2. Agrega paquetes con `cargo new`. Se añaden automáticamente a members:
+
+   [workspace]
+   resolver = "3"
+   members = ["adder", "add_one"]
+
+Estructura resultante:
+
+  add/
+  ├── Cargo.lock
+  ├── Cargo.toml
+  ├── add_one/
+  │   ├── Cargo.toml
+  │   └── src/lib.rs
+  ├── adder/
+  │   ├── Cargo.toml
+  │   └── src/main.rs
+  └── target/          ← Único directorio de salida compartido
+
+Un solo target/ compartido evita recompilaciones innecesarias entre crates.
+
+DEPENDENCIAS ENTRE PAQUETES DEL WORKSPACE
+------------------------------------------
+Cargo no asume dependencias entre crates del workspace. Debes declararlas
+explícitamente en el Cargo.toml del paquete que depende:
+
+  [dependencies]
+  add_one = { path = "../add_one" }
+
+Para ejecutar un binario específico:
+
+  $ cargo run -p adder
+
+DEPENDENCIAS EXTERNAS
+----------------------
+El workspace tiene un único Cargo.lock, garantizando que todos los crates
+usen la misma versión de cada dependencia externa. Sin embargo, cada crate
+debe declarar sus propias dependencias en su Cargo.toml aunque otra ya las
+use. Cargo resolverá siempre la misma versión compatible.
+
+PRUEBAS EN EL WORKSPACE
+------------------------
+Ejecutar desde el directorio raíz corre las pruebas de todos los crates:
+
+  $ cargo test
+
+Para un crate específico:
+
+  $ cargo test -p add_one
+
+PUBLICANDO DESDE UN WORKSPACE
+-------------------------------
+Cada crate debe publicarse por separado:
+
+  $ cargo publish -p add_one
+  $ cargo publish -p adder
+
+> Consejo: A medida que tu proyecto crece, considera usar un workspace.
+> Facilita trabajar con componentes más pequeños y coordinar crates que
+> cambian frecuentemente juntos.
+
+
+----------------------------------------------------------------
+  14.4 — Instalando Binarios con cargo install
+----------------------------------------------------------------
+
+El comando `cargo install` permite instalar crates binarios localmente.
+No reemplaza los gestores de paquetes del sistema; es una forma conveniente
+de instalar herramientas compartidas en crates.io.
+
+REQUISITO: Solo se pueden instalar crates con un "binary target"
+(que tengan src/main.rs u otro archivo declarado como binario).
+
+UBICACIÓN DE LOS BINARIOS INSTALADOS
+--------------------------------------
+Todos los binarios se guardan en:  $HOME/.cargo/bin
+
+Asegúrate de que este directorio esté en tu $PATH para poder ejecutar
+los programas instalados.
+
+EJEMPLO: Instalando ripgrep
+-----------------------------
+ripgrep es una implementación en Rust del comando grep, más rápida y
+potente para buscar en archivos.
+
+  $ cargo install ripgrep
+
+Una vez instalado, ejecuta `rg --help` para comenzar a usarlo.
+
+
+----------------------------------------------------------------
+  14.5 — Extendiendo Cargo con Comandos Personalizados
+----------------------------------------------------------------
+
+Cargo puede extenderse con nuevos subcomandos sin necesidad de modificarlo.
+
+CÓMO FUNCIONA
+--------------
+Si existe un binario en tu $PATH con el nombre `cargo-something`,
+puedes ejecutarlo como subcomando de Cargo:
+
+  $ cargo something
+
+Los comandos personalizados también aparecen en el listado:
+
+  $ cargo --list
+
+Puedes instalar extensiones con `cargo install` y usarlas exactamente
+igual que los comandos integrados de Cargo.
+
+
+================================================================
+  RESUMEN DEL CAPÍTULO 14
+================================================================
+
+Compartir código con Cargo y crates.io es parte de lo que hace al
+ecosistema de Rust tan útil para tantas tareas distintas.
+
+  - La librería estándar de Rust es pequeña y estable.
+  - Los crates son fáciles de compartir, usar y mejorar con su
+    propio ciclo de vida, independiente del del lenguaje.
+
+No tengas timidez en compartir en crates.io el código que te resulte
+útil: es muy probable que también le sea útil a alguien más.
+
+================================================================
