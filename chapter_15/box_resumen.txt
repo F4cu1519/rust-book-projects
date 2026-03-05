@@ -1,0 +1,188 @@
+====================================================
+         RESUMEN COMPLETO DE Box<T> EN RUST
+====================================================
+
+----------------------------------------------------
+1. ¿QUÉ ES Box<T>?
+----------------------------------------------------
+
+Box es un puntero inteligente que guarda datos en el HEAP
+en lugar del STACK, y ES EL DUEÑO de esos datos.
+
+    let b = Box::new(5);
+
+    STACK           HEAP
+    [ b = ptr ] --> [ 5 ]
+
+Cuando b muere, el heap se libera automáticamente.
+No necesitas hacer nada manual.
+
+
+----------------------------------------------------
+2. STACK vs HEAP
+----------------------------------------------------
+
+STACK:
+- Memoria rápida
+- Tamaño fijo y conocido en tiempo de COMPILACIÓN
+- Se borra SIEMPRE al terminar la función
+
+HEAP:
+- Memoria flexible
+- Tamaño dinámico
+- Solo se libera cuando su Box muere
+
+
+----------------------------------------------------
+3. & vs Box  (LA DIFERENCIA CLAVE)
+----------------------------------------------------
+
+&    --> "yo solo sé dónde está el dato, no soy el dueño"
+Box  --> "yo soy el dueño del dato, yo decido cuándo muere"
+
+Por qué & no funciona para retornar datos nuevos:
+
+    fn crear() -> &i32 {
+        let x = 5;   // x vive en el STACK
+        &x           // solo una dirección al stack
+    }                // stack muere 💀 --> & apunta a basura 💥
+
+Por qué Box sí funciona:
+
+    fn crear() -> Box<i32> {
+        Box::new(5)  // dato vive en el HEAP
+    }                // stack muere, pero Box se mueve afuera ✅
+
+
+----------------------------------------------------
+4. ¿CUÁNDO SE LIBERA EL HEAP?
+----------------------------------------------------
+
+El heap no tiene vida propia.
+Vive y muere con su Box.
+
+    Box vivo  --> heap vivo
+    Box muerto --> heap muerto
+
+Los tres casos:
+
+    // 1. Lo retornas --> heap sobrevive
+    fn crear() -> Box<i32> {
+        Box::new(5)        // Box se mueve afuera ✅
+    }
+    let x = crear();       // x es el nuevo dueño ✅
+
+    // 2. No lo retornas --> heap se libera
+    fn crear() {
+        let b = Box::new(5);
+    }                      // b muere, heap se libera 🧹
+
+    // 3. Nadie lo recibe --> heap se libera
+    crear();               // Box muere inmediatamente 🧹
+
+
+----------------------------------------------------
+5. LA PROPIEDAD VIAJA CON EL BOX
+----------------------------------------------------
+
+Quien recibe el Box, hereda la responsabilidad del heap.
+
+    fn crear() -> Box<i32> {
+        Box::new(5)
+    }
+
+    let x = crear();  // x es Box automáticamente
+                      // x es el nuevo dueño
+                      // cuando x muera, heap se libera
+
+No necesitas escribir Box explícitamente al recibirlo,
+Rust lo infiere solo.
+
+    ¿Alguien recibe el Box? --> SÍ --> ese alguien es el dueño ✅
+    ¿Alguien recibe el Box? --> NO --> Box muere, heap se libera 🧹
+
+
+----------------------------------------------------
+6. DIFERENCIA CON C (POR QUÉ RUST ES MEJOR)
+----------------------------------------------------
+
+En C puedes perder la referencia y el heap queda fantasma:
+
+    void crear() {
+        int* p = malloc(4);
+        *p = 5;
+    }  // p se pierde... heap sigue ocupado para siempre 😱
+
+En Rust eso no puede pasar.
+Drop se ejecuta siempre que Box muere:
+
+    fn crear() {
+        let b = Box::new(5);
+    }  // Drop ejecuta --> heap se libera de verdad 🧹
+
+    C    --> pierdes referencia --> heap queda fantasma 👻
+    Rust --> Box muere          --> heap se libera     🧹
+
+
+----------------------------------------------------
+7. TIPOS RECURSIVOS (lista enlazada)
+----------------------------------------------------
+
+Sin Box el compilador no puede calcular el tamaño:
+
+    enum Lista {
+        Nodo(i32, Lista),  // ❌ tamaño infinito
+        Vacia,
+    }
+
+    Compilador: ¿cuánto mide Lista?
+        --> tiene Nodo
+        --> Nodo tiene Lista
+            --> Lista tiene Nodo
+                --> Nodo tiene Lista... ∞ 💥
+
+Con Box el compilador termina en un paso:
+
+    enum Lista {
+        Nodo(i32, Box<Lista>),  // ✅ tamaño conocido
+        Vacia,
+    }
+
+    Compilador: ¿cuánto mide Lista?
+        --> Nodo = i32 (4 bytes) + Box (8 bytes) = 12 bytes ✅
+
+Box SIEMPRE mide 8 bytes (es un puntero).
+No importa qué tan grande sea lo que apunta.
+
+Cómo se ve en memoria:
+
+    let lista = Nodo(1,
+        Box::new(Nodo(2,
+            Box::new(Nodo(3,
+                Box::new(Vacia))))));
+
+    STACK          HEAP
+    [ Nodo(1) ]--> [ Nodo(2) ]--> [ Nodo(3) ]--> [ Vacia ]
+
+Cuando lista muere, Drop se llama en cadena:
+    libera Nodo(1) --> Nodo(2) --> Nodo(3) --> Vacia 🧹
+
+
+----------------------------------------------------
+8. RESUMEN FINAL
+----------------------------------------------------
+
+    Box NO es un problema de espacio (stack vs heap)
+    Box ES un problema de conocimiento (tiempo de compilación)
+
+    Rust necesita saber el tamaño de todo ANTES de ejecutar.
+    Box siempre mide lo mismo (8 bytes).
+    Por eso el compilador puede terminar de calcular.
+
+    & no puede retornarse  --> no es dueño, no puede mover el dato
+    Box sí puede           --> es dueño, mueve el dato al retornar
+
+    Box vivo  --> heap vivo
+    Box muerto --> heap muerto (Drop lo limpia automáticamente)
+
+====================================================
