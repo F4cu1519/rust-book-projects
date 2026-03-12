@@ -1,0 +1,44 @@
+## Explicación teórica
+
+### ¿Qué es un canal?
+
+Un canal es un tubo unidireccional para pasar datos entre hilos. Tiene exactamente dos extremos que Rust te entrega como una tupla al crearlo:
+```
+tx.send(valor)  ──────────────→  rx.recv()
+  transmisor                       receptor
+  (productor)                    (consumidor)
+```
+
+Los datos fluyen siempre en una sola dirección. Si necesitás comunicación bidireccional, creás dos canales separados.
+
+---
+
+### Por qué `send()` toma ownership
+
+Este es el punto más importante del capítulo. Cuando hacés `tx.send(val)`, Rust **mueve** el valor al canal, no lo copia ni lo presta. A partir de ese momento, el hilo emisor ya no puede tocarlo.
+
+La razón es evitar *data races*: si dos hilos pudieran acceder al mismo dato al mismo tiempo sin coordinación, el resultado sería indefinido. Rust hace esto imposible a nivel de compilación, no en runtime. Si intentás usar `val` después de `send(val)`, el compilador falla con `E0382` antes de que el programa siquiera exista.
+
+---
+
+### El ciclo de vida del canal
+
+El canal permanece abierto mientras haya **al menos un transmisor vivo**. Cuando todos los `tx` salen de scope y son descartados, el canal se cierra. Esto es lo que le señala al iterador `for val in rx` que debe terminar, sin necesidad de ningún mensaje especial de "fin".
+
+---
+
+### `recv` vs `try_recv`
+
+`recv()` bloquea el hilo actual hasta que llegue un mensaje. Es la opción más simple cuando el hilo no tiene nada más que hacer mientras espera.
+
+`try_recv()` retorna inmediatamente con `Ok(valor)` si había algo, o `Err` si no. Es útil cuando el hilo tiene trabajo propio que puede hacer entre chequeos, como en el ejemplo 5 donde el main sigue "trabajando" mientras espera.
+
+---
+
+### `mpsc` — múltiples productores
+
+La sigla significa *multiple producer, single consumer*. Podés clonar el transmisor con `tx.clone()` y pasarle una copia a cada hilo productor. Todos comparten el mismo receptor:
+```
+  tx  ──┐
+  tx2 ──┼──→  rx
+  tx3 ──┘
