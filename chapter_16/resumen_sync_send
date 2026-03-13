@@ -1,0 +1,42 @@
+Extensible Concurrency con Send y Sync (Resumen)
+
+En Rust, la mayoría de las herramientas de concurrencia están en la librería estándar y no directamente en el lenguaje. Esto significa que se pueden crear nuevas abstracciones de concurrencia o usar bibliotecas externas. Sin embargo, existen dos conceptos fundamentales que sí están integrados en el lenguaje: los marker traits Send y Sync.
+
+Send – Transferir ownership entre threads
+
+El trait Send indica que la propiedad (ownership) de un valor puede transferirse de un thread a otro de forma segura. Casi todos los tipos de Rust implementan Send automáticamente.
+
+Una excepción importante es Rc<T>. Este tipo no implementa Send porque su contador de referencias no es seguro para múltiples threads. Si dos threads modificaran ese contador al mismo tiempo, podría producirse una condición de carrera (data race).
+
+Por esta razón, Rc<T> está pensado para programas de un solo thread. Cuando se necesita compartir datos entre varios threads se utiliza Arc<T>, que sí es thread-safe.
+
+Además, cualquier tipo que esté compuesto únicamente por tipos que implementan Send automáticamente también será Send.
+
+Sync – Acceso desde múltiples threads
+
+El trait Sync indica que un tipo puede ser referenciado desde varios threads al mismo tiempo de forma segura.
+
+Formalmente, un tipo T implementa Sync si una referencia inmutable &T puede enviarse entre threads (es decir, si &T implementa Send).
+
+La mayoría de los tipos primitivos implementan Sync, y los tipos compuestos únicamente por tipos Sync también lo implementan automáticamente.
+
+Algunos tipos no implementan Sync, por ejemplo:
+
+* Rc<T>
+* RefCell<T>
+* Cell<T>
+
+Esto ocurre porque RefCell<T> y tipos similares realizan el borrow checking en tiempo de ejecución, lo cual no es seguro para múltiples threads.
+
+Por otro lado, Mutex<T> sí implementa Sync y permite compartir acceso a datos entre múltiples threads de manera segura.
+
+Implementar Send y Sync manualmente
+
+Normalmente no es necesario implementar estos traits manualmente. Si todos los campos de un tipo implementan Send o Sync, el compilador los implementa automáticamente.
+
+Implementarlos manualmente requiere usar código unsafe, ya que se debe garantizar cuidadosamente que el tipo mantenga las garantías de seguridad de concurrencia. Si se hace incorrectamente, se podrían introducir errores graves como data races.
+
+Idea clave
+
+Send controla si un valor puede moverse entre threads.
+Sync controla si un valor puede ser compartido entre threads mediante referencias.
