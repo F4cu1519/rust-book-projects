@@ -1,0 +1,253 @@
+========================================
+RUST ASYNC - CONCURRENCIA (CAP 17.2)
+========================================
+
+1) QUÉ ES CONCURRENCIA EN ASYNC
+
+Concurrencia:
+- Varias tareas avanzan “al mismo tiempo”
+- No necesariamente en paralelo
+
+IMPORTANTE:
+async ≠ paralelismo
+
+Threads → paralelo real (CPU)
+Async → una tarea avanza mientras otras esperan
+
+
+----------------------------------------
+2) CREAR TAREAS ASYNC
+----------------------------------------
+
+Threads:
+thread::spawn(...)
+
+Async:
+trpl::spawn_task(...)
+
+Esto crea una nueva tarea concurrente.
+
+----------------------------------------
+3) CÓMO FUNCIONA INTERNAMENTE
+----------------------------------------
+
+El runtime:
+1. ejecuta una tarea
+2. llega a .await → pausa
+3. ejecuta otra tarea
+4. repite
+
+----------------------------------------
+4) PROBLEMA: LAS TAREAS MUEREN
+----------------------------------------
+
+Si main termina:
+→ TODAS las tareas mueren
+
+Solución:
+let handle = spawn_task(...);
+handle.await;
+
+----------------------------------------
+5) JOIN (ALTERNATIVA A SPAWN)
+----------------------------------------
+
+trpl::join(fut1, fut2).await;
+
+Ejecuta ambos futures concurrentemente.
+
+Cómo funciona:
+- ejecuta un poco de A
+- ejecuta un poco de B
+- repite
+
+(Fair scheduling)
+
+----------------------------------------
+6) REGLA CLAVE
+----------------------------------------
+
+DENTRO DE async:
+→ TODO es SECUENCIAL
+
+Ejemplo:
+async {
+    A();
+    B().await;
+}
+
+NO es concurrente.
+
+----------------------------------------
+7) CONCURRENCIA REAL
+----------------------------------------
+
+Necesitas múltiples futures:
+
+let a = async { ... };
+let b = async { ... };
+
+join(a, b).await;
+
+----------------------------------------
+8) CHANNELS (COMUNICACIÓN)
+----------------------------------------
+
+let (tx, rx) = trpl::channel();
+
+Enviar:
+tx.send(valor);
+
+Recibir:
+rx.recv().await;
+
+----------------------------------------
+9) DIFERENCIA CON THREADS
+----------------------------------------
+
+Threads:
+recv() bloquea el hilo
+
+Async:
+recv().await NO bloquea
+→ el runtime ejecuta otra tarea
+
+----------------------------------------
+10) ERROR TÍPICO
+----------------------------------------
+
+for (...) {
+    tx.send(...)
+    sleep().await
+}
+
+while let Some(...) = rx.recv().await
+
+Resultado:
+→ NO hay concurrencia
+
+Porque:
+1. termina el for
+2. recién empieza el while
+
+----------------------------------------
+11) SOLUCIÓN
+----------------------------------------
+
+Separar en tareas:
+
+let sender = async { ... };
+let receiver = async { ... };
+
+join(sender, receiver).await;
+
+----------------------------------------
+12) PROBLEMA: LOOP INFINITO
+----------------------------------------
+
+while let Some(...) = rx.recv().await
+
+Nunca termina porque:
+→ el canal nunca se cierra
+
+----------------------------------------
+13) SOLUCIÓN: MOVE
+----------------------------------------
+
+let sender = async move { ... };
+
+Esto:
+- mueve tx al bloque
+- cuando termina → tx se destruye
+- canal se cierra
+- receiver termina
+
+----------------------------------------
+14) OWNERSHIP EN ASYNC
+----------------------------------------
+
+Igual que threads:
+- cada dato tiene dueño
+- move transfiere ownership
+
+----------------------------------------
+15) MÚLTIPLES PRODUCTORES
+----------------------------------------
+
+let tx2 = tx.clone();
+
+Resultado:
+- varios senders
+- un receiver
+
+----------------------------------------
+16) JOIN! (MACRO)
+----------------------------------------
+
+trpl::join!(f1, f2, f3);
+
+join   → 2 tareas
+join!  → muchas tareas
+
+----------------------------------------
+17) ASYNC VS THREADS
+----------------------------------------
+
+Async:
+- liviano
+- no bloquea
+- usa runtime
+- muchas tareas
+- ideal IO
+
+Threads:
+- pesado
+- bloquea
+- usa OS
+- pocas tareas
+- ideal CPU
+
+----------------------------------------
+18) MODELO MENTAL
+----------------------------------------
+
+1 hilo
+↓
+muchas tareas async
+↓
+runtime las intercala
+
+----------------------------------------
+19) IDEA MÁS IMPORTANTE
+----------------------------------------
+
+ASYNC NO CREA CONCURRENCIA SOLO
+
+Necesitas:
+- spawn
+- join
+- múltiples tareas
+
+----------------------------------------
+20) RESUMEN FINAL
+----------------------------------------
+
+- Async permite concurrencia sin threads
+- spawn_task crea tareas concurrentes
+- join ejecuta futures juntos
+- dentro de async todo es secuencial
+- recv().await no bloquea
+- para concurrencia → múltiples futures
+- move cierra canales correctamente
+- clone permite múltiples productores
+- join! ejecuta varias tareas
+
+----------------------------------------
+3 IDEAS CLAVE
+----------------------------------------
+
+1. async ≠ paralelo
+2. necesitas múltiples futures
+3. el runtime decide ejecución
+4. .await no cambia de código dentro del mismo bloque
+solo permite cambiar entre FUTURES distintos
