@@ -1,0 +1,205 @@
+================================================================
+ RESUMEN TEÓRICO — ASYNC EN RUST (Capítulos 17.2, 17.3 y 17.4)
+================================================================
+
+----------------------------------------------------------------
+ 1. CONCEPTOS BASE
+----------------------------------------------------------------
+
+Async/Await es el sistema de Rust para escribir código concurrente
+sin bloquear hilos del sistema operativo.
+
+- Future: representa un valor que puede no estar disponible todavía.
+  El runtime lo "consulta" (poll) hasta que esté listo.
+
+- await: punto donde Rust cede el control al runtime. Entre dos
+  puntos await, el código se ejecuta de forma SINCRÓNICA.
+
+- Runtime: el motor que decide qué futuro ejecutar en cada momento
+  (ej: tokio, async-std, o trpl en el libro).
+
+- block_on: función que conecta el mundo síncrono con el async.
+  Bloquea el hilo actual hasta que un futuro async termine.
+
+
+----------------------------------------------------------------
+ 2. TAREAS Y CONCURRENCIA (Cap. 17.2)
+----------------------------------------------------------------
+
+spawn_task:
+  Similar a thread::spawn pero para tareas async.
+  La tarea se cancela si el bloque principal termina antes.
+  Para esperarla se usa: handle.await.unwrap()
+
+trpl::join(fut1, fut2):
+  Corre dos futuros concurrentemente y espera que AMBOS terminen.
+  Es JUSTO: alterna entre futuros equitativamente.
+  Retorna una tupla con los resultados de ambos.
+
+trpl::join! (macro):
+  Igual que join() pero acepta más de dos futuros.
+  La cantidad debe conocerse en tiempo de compilación.
+
+trpl::select(fut1, fut2):
+  Corre dos futuros y retorna el resultado del que termine PRIMERO.
+  NO es justo: siempre le da prioridad al primero en la lista.
+  El futuro perdedor se descarta.
+
+Canales async (trpl::channel):
+  Versión async de mpsc::channel.
+  tx.send(valor)    → no bloquea (canal sin límite)
+  rx.recv().await   → async, retorna Option<T>
+  Se cierra cuando tx es descartado → rx.recv() retorna None
+
+async move:
+  Transfiere ownership de variables al bloque async.
+  Necesario para que tx se descarte al terminar el bloque,
+  lo que cierra el canal y permite que el receptor termine.
+
+Ejecución lineal dentro de un bloque async:
+  Todo el código dentro de UN bloque async se ejecuta en secuencia.
+  Para verdadera concurrencia, las operaciones deben estar en
+  bloques async SEPARADOS unidos con join o join!
+
+
+----------------------------------------------------------------
+ 3. CONTROL DEL RUNTIME (Cap. 17.3)
+----------------------------------------------------------------
+
+Inanición de futuros (starvation):
+  Si un futuro hace trabajo largo sin ningún punto await,
+  bloquea a todos los demás futuros. Cada futuro tiene la
+  responsabilidad de ceder el control periódicamente.
+
+trpl::yield_now():
+  Cede el control al runtime inmediatamente sin esperar nada.
+  Más eficiente que sleep() para tareas CPU-bound que quieren
+  intercalarse con otras tareas.
+  Uso: trpl::yield_now().await
+
+trpl::sleep(Duration):
+  Pausa el futuro por un tiempo determinado.
+  A diferencia de thread::sleep, NO bloquea el hilo.
+  Tiene granularidad mínima (aprox. 1ms), por eso yield_now
+  es preferible cuando solo queremos ceder el turno.
+
+Multitarea Cooperativa:
+  El modelo de async en Rust es cooperativo: cada futuro decide
+  cuándo ceder el control (en sus puntos await).
+  Contraste con hilos: el SO decide cuándo interrumpirlos.
+  Consecuencia: un futuro mal escrito puede bloquear a todos los
+  demás si no tiene puntos await suficientes.
+
+Construir abstracciones async propias:
+  Los futuros se pueden componer para crear nuevas herramientas.
+  Ejemplo — timeout:
+
+    async fn timeout<F: Future>(
+        futuro: F,
+        limite: Duration,
+    ) -> Result<F::Output, Duration> {
+        match trpl::select(futuro, trpl::sleep(limite)).await {
+            Either::Left(valor) => Ok(valor),
+            Either::Right(_)    => Err(limite),
+        }
+    }
+
+  Si el futuro termina primero → Ok(valor)
+  Si el timer termina primero  → Err(duracion)
+
+
+----------------------------------------------------------------
+ 4. STREAMS (Cap. 17.4)
+----------------------------------------------------------------
+
+Qué es un Stream:
+  Una secuencia de valores producidos ASINCRÓNICAMENTE a lo largo
+  del tiempo. Es la combinación de Iterator y Future.
+
+  Iterator → produce N valores → de forma SÍNCRONA
+  Future   → produce 1 valor  → de forma ASÍNCRONA
+  Stream   → produce N valores → de forma ASÍNCRONA
+
+El trait Stream (bajo nivel):
+  Método central: poll_next()
+  Retorna:
+    Poll::Pending              → el próximo elemento no está listo
+    Poll::Ready(Some(valor))   → llegó un elemento
+    Poll::Ready(None)          → el stream se agotó
+
+El trait StreamExt (alto nivel):
+  Extiende Stream con métodos útiles (patrón "Ext" de Rust).
+  Debe importarse explícitamente: use trpl::StreamExt;
+  Provee: next(), map(), filter(), take(), y más.
+
+Crear un stream desde un iterador:
+  trpl::stream_from_iter(iter)
+  Los datos ya están en memoria → poll_next siempre Ready.
+
+Consumir un stream:
+  while let Some(valor) = stream.next().await {
+      // procesar valor
+  }
+  El bucle termina cuando el stream retorna None.
+
+Encadenar transformaciones:
+  stream
+      .map(|n| n * 2)
+      .filter(|n| n % 2 == 0)
+      .take(5)
+  Cada método retorna un nuevo Stream. Son lazy: no procesan
+  nada hasta que se consumen con .await.
+
+Streams desde canales async:
+  rx.recv().await es conceptualmente un stream:
+  produce valores a medida que llegan y termina cuando
+  el canal se cierra (tx es descartado).
+
+Streams vs Iteradores — diferencias clave:
+  Iterador: next() es síncrono, bloquea si no hay dato
+  Stream:   next().await es asíncrono, cede el control
+            al runtime mientras espera el próximo elemento
+
+
+----------------------------------------------------------------
+ 5. TABLA COMPARATIVA — HILOS VS ASYNC
+----------------------------------------------------------------
+
+                    HILOS               ASYNC
+ Planificación      Sistema operativo   Runtime de Rust
+ Equidad            No garantizada      Depende del runtime
+ Overhead           Alto (hilo del SO)  Bajo (sin nuevo hilo)
+ Bloqueo            thread::sleep       trpl::sleep + .await
+ Esperar fin        handle.join()       handle.await
+ Concurrencia N     thread::spawn x N   join! / select
+ Datos entre tareas mpsc::channel       trpl::channel (async)
+ Multitarea         Preemptiva          Cooperativa
+
+
+----------------------------------------------------------------
+ 6. PATRONES IMPORTANTES
+----------------------------------------------------------------
+
+Patrón 1 — join para concurrencia:
+  No uses spawn_task si podés usar join.
+  join no necesita un nuevo hilo del SO.
+
+Patrón 2 — async move para ownership:
+  Usá async move cuando necesitás que una variable
+  sea descartada al terminar el bloque async.
+
+Patrón 3 — StreamExt siempre en scope:
+  Sin "use trpl::StreamExt" no tenés acceso a next()
+  ni a los métodos de transformación del stream.
+
+Patrón 4 — yield_now en código CPU-intensivo:
+  Si tenés loops o cálculos largos en async, insertá
+  yield_now().await periódicamente para no hambrear
+  a otras tareas.
+
+Patrón 5 — componer futuros para nuevas abstracciones:
+  select + sleep = timeout propio
+  timeout + retry = reintento con límite de tiempo
+  Las abstracciones async se construyen sobre otras async.
+
+================================================================

@@ -1,0 +1,11 @@
+C:\Users\facun\Projects of rust book\chapter_17\mas_De_asincronismo\target\debug\deps\phf-d701ab64e836a3eb.d: C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\lib.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\map.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\ordered_map.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\ordered_set.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\set.rs
+
+C:\Users\facun\Projects of rust book\chapter_17\mas_De_asincronismo\target\debug\deps\libphf-d701ab64e836a3eb.rlib: C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\lib.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\map.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\ordered_map.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\ordered_set.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\set.rs
+
+C:\Users\facun\Projects of rust book\chapter_17\mas_De_asincronismo\target\debug\deps\libphf-d701ab64e836a3eb.rmeta: C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\lib.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\map.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\ordered_map.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\ordered_set.rs C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\set.rs
+
+C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\lib.rs:
+C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\map.rs:
+C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\ordered_map.rs:
+C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\ordered_set.rs:
+C:\Users\facun\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\phf-0.11.3\src\set.rs:
