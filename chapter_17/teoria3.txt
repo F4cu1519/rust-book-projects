@@ -1,0 +1,248 @@
+================================================================================
+  RESUMEN: Async en Rust — Traits, Pin/Unpin, Streams, Tareas e Hilos
+  Basado en: The Rust Programming Language, Capítulos 17-05 y 17-06
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+1. EL TRAIT `Future`
+────────────────────────────────────────────────────────────────────────────────
+
+Un Future es un valor que todavía no está listo, pero lo estará en algún momento.
+Es la pieza central del modelo async de Rust.
+
+Tiene dos partes importantes:
+
+  - Output: el tipo del valor que producirá cuando termine.
+  - poll(): el método que el runtime llama para preguntarle "¿ya terminaste?".
+
+poll() devuelve uno de dos resultados:
+
+  - Ready(valor)  → el future terminó, acá está el resultado.
+  - Pending       → todavía no terminó, volvé a preguntar después.
+
+¿Qué pasa cuando escribís `await`?
+  Rust traduce el `await` en llamadas a `poll` bajo el capó. Si el resultado
+  es Pending, el runtime pausa ese future, ejecuta otros, y vuelve a este
+  cuando haya progreso. Eso es lo que hace que async sea NO bloqueante.
+
+Regla importante:
+  No llames a poll() manualmente después de que devolvió Ready.
+  Muchos futures entran en pánico si se hace eso. Es igual que no llamar
+  a next() en un iterador ya agotado.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2. EL TIPO `Pin`
+────────────────────────────────────────────────────────────────────────────────
+
+¿Por qué existe Pin?
+
+  Cuando Rust compila un bloque async, lo convierte en una máquina de estados.
+  Esa máquina puede terminar guardando referencias que apuntan a partes de
+  sí misma (se llama tipo auto-referencial).
+
+  El problema: si movés ese tipo en memoria, las referencias internas quedan
+  apuntando a la dirección vieja, que ahora puede contener cualquier cosa.
+  Eso es comportamiento indefinido, algo que Rust no permite.
+
+¿Qué hace Pin?
+
+  Pin garantiza que el valor detrás del puntero NO se va a mover en memoria.
+
+  Ejemplo: Pin<Box<MiFuture>>
+    - El Box (el puntero) sí puede moverse.
+    - El valor MiFuture adentro NO puede moverse. Está "clavado" en su lugar.
+
+Por eso poll() recibe Pin<&mut Self> en lugar de &mut self: para garantizar
+que el future no se mueve mientras se lo está ejecutando.
+
+
+────────────────────────────────────────────────────────────────────────────────
+3. EL TRAIT `Unpin`
+────────────────────────────────────────────────────────────────────────────────
+
+Si Pin fija las cosas, ¿cómo sabemos qué tipos necesitan ser fijados?
+
+  Unpin es un marcador (sin métodos) que le dice al compilador:
+  "este tipo NO tiene referencias internas, es seguro moverlo aunque esté
+  bajo un Pin."
+
+  El compilador implementa Unpin automáticamente para la mayoría de los tipos:
+  String, Vec, i32, bool, structs comunes, etc.
+
+  Los futures generados por bloques async implementan !Unpin (NO son Unpin),
+  porque sí pueden tener referencias internas.
+
+Resumen de la relación Pin / Unpin:
+
+  - Unpin  → caso normal. Casi todo lo que usás en el día a día.
+  - !Unpin → caso especial. Principalmente futures async.
+  - Solo importa cuando usás un puntero fijado del tipo Pin<&mut T>.
+
+
+────────────────────────────────────────────────────────────────────────────────
+4. EL ERROR CLÁSICO Y CÓMO SOLUCIONARLO
+────────────────────────────────────────────────────────────────────────────────
+
+Cuando intentás poner futures en un Vec y pasarlos a join_all(), Rust se queja:
+
+  "dyn Future<Output = ()> cannot be unpinned"
+  "the trait Unpin is not implemented for dyn Future<Output = ()>"
+
+¿Por qué?
+  Box<dyn Future> solo implementa Future si el T adentro implementa Unpin.
+  Los futures async no lo implementan, entonces el Vec no funciona así.
+
+¿Cómo se soluciona?
+  Usás la macro pin!() para fijar cada future, y cambias el tipo del Vec:
+
+  Antes (no compila):
+    Vec<Box<dyn Future<Output = ()>>>
+
+  Después (compila):
+    Vec<Pin<&mut dyn Future<Output = ()>>>
+
+  Y cada future se crea con:
+    let mi_fut = pin!(async move { ... });
+
+  De esa forma los futures están fijados en memoria y pueden entrar al Vec
+  sin problema. Los datos subyacentes no se moverán.
+
+
+────────────────────────────────────────────────────────────────────────────────
+5. EL TRAIT `Stream`
+────────────────────────────────────────────────────────────────────────────────
+
+Un Stream es básicamente un Iterator asíncrono.
+
+  - Un Iterator produce valores de forma sincrónica, uno a la vez.
+  - Un Future produce UN valor de forma asíncrona.
+  - Un Stream produce MUCHOS valores de forma asíncrona, a lo largo del tiempo.
+
+Combinando ideas de ambos:
+
+  - De Iterator: hay una secuencia, puede haber cero o muchos elementos.
+  - De Future:   los elementos se vuelven disponibles con el tiempo (poll).
+
+Su método central es poll_next(), que devuelve Poll<Option<Item>>:
+
+  - Poll:   ¿hay algo disponible ahora?
+  - Option: ¿quedan más elementos? None significa que el stream terminó.
+
+Nota: Stream aún no está en la biblioteca estándar de Rust, pero la definición
+del crate `futures` es usada por todo el ecosistema.
+
+¿Cómo se usa en la práctica?
+
+  No usás poll_next() directamente. El trait StreamExt proporciona el método
+  next() que podés usar con await, igual que usás await en lugar de poll():
+
+    while let Some(valor) = mi_stream.next().await {
+        println!("{valor}");
+    }
+
+  StreamExt también incluye métodos como map(), filter(), take(), etc.,
+  y se implementa automáticamente para todo tipo que implemente Stream.
+  Así que si creás tu propio tipo de stream, solo necesitás implementar
+  Stream y obtenés StreamExt gratis.
+
+
+────────────────────────────────────────────────────────────────────────────────
+6. FUTURES, TAREAS E HILOS — ¿CUÁNDO USAR CADA UNO?
+────────────────────────────────────────────────────────────────────────────────
+
+Hay tres niveles de concurrencia en Rust:
+
+  Hilos (Threads)
+    Gestionados por el sistema operativo.
+    Cada hilo tiene su propio stack (consume más memoria).
+    La concurrencia ocurre ENTRE hilos.
+    Son "fire and forget": no tienen equivalente nativo a Future.
+    Solo disponibles si el SO y el hardware los soportan.
+
+  Tareas (Tasks)
+    Gestionadas por el runtime (biblioteca), no por el SO.
+    Mucho más livianas que los hilos.
+    La concurrencia ocurre ENTRE tareas y también DENTRO de una tarea
+    (porque una tarea puede alternar entre futures).
+    Pueden moverse entre hilos gracias al "work stealing".
+
+  Futures
+    La unidad más granular de concurrencia en Rust.
+    El executor del runtime los gestiona a través de las tareas.
+    Cada future puede representar un árbol de otros futures.
+
+Relación: Futures ⊂ Tareas ⊂ Hilos
+
+
+────────────────────────────────────────────────────────────────────────────────
+7. GUÍA DE DECISIÓN: ¿HILOS O ASYNC?
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌──────────────────────────────────────┬──────────────────────────────────┐
+  │ Tipo de trabajo                      │ Herramienta recomendada          │
+  ├──────────────────────────────────────┼──────────────────────────────────┤
+  │ CPU-bound (cómputo intensivo,        │ Hilos (threads)                  │
+  │ procesamiento de datos, encoding...) │                                  │
+  ├──────────────────────────────────────┼──────────────────────────────────┤
+  │ I/O-bound (red, disco, mensajes,     │ Async / Futures / Tasks          │
+  │ múltiples fuentes de datos...)       │                                  │
+  ├──────────────────────────────────────┼──────────────────────────────────┤
+  │ Necesitás ambos                      │ ¡Combiná hilos y async!          │
+  └──────────────────────────────────────┴──────────────────────────────────┘
+
+La combinación más común en código real:
+  - Un hilo hace el trabajo pesado (síncrono/bloqueante).
+  - Un bloque async recibe y procesa los resultados (no bloqueante).
+  - Se comunican mediante un canal async (channel).
+
+Ejemplo conceptual:
+  - Encoding de video → hilo dedicado (CPU-bound).
+  - Notificación a la UI cuando termina → canal async (I/O-bound).
+
+Dato extra — Work Stealing:
+  Muchos runtimes (tokio, async-std, etc.) son multihilo por defecto y usan
+  work stealing: mueven tareas entre hilos automáticamente para equilibrar
+  la carga. Esta técnica requiere hilos + tareas + futures en conjunto.
+  No tenés que hacer nada especial para aprovecharlo; el runtime lo maneja.
+
+
+────────────────────────────────────────────────────────────────────────────────
+8. MAPA MENTAL — RESUMEN VISUAL
+────────────────────────────────────────────────────────────────────────────────
+
+  async/await
+      │
+      ▼
+  FUTURE (trait)
+    │  → poll() devuelve Ready(val) o Pending
+    │  → el runtime llama a poll(), no vos
+    │
+    ├─── Necesita Pin<&mut Self> porque los futures son auto-referenciales
+    │         │
+    │         └── PIN: garantiza que el dato no se mueve en memoria
+    │                   │
+    │                   ├── Unpin  = puede moverse (la mayoría de tipos)
+    │                   └── !Unpin = NO puede moverse (futures async)
+    │
+    └─── STREAM (trait) = Future + Iterator
+              │  → poll_next() devuelve Poll<Option<Item>>
+              │
+              └── StreamExt: .next().await, .map(), .filter(), etc.
+
+
+  CONCURRENCIA:
+
+    Futures  →  unidad mínima, árbol de futures
+       ⊂
+    Tareas   →  gestionadas por el runtime, livianas, pueden cambiar de hilo
+       ⊂
+    Hilos    →  gestionados por el SO, más pesados, paralelismo real
+
+    I/O-bound  →  async     |     CPU-bound  →  threads     |     Ambos  →  combiná
+
+
+────────────────────────────────────────────────────────────────────────────────
+  FIN DEL RESUMEN
+================================================================================
