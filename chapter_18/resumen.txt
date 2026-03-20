@@ -1,0 +1,174 @@
+RUST Y LA PROGRAMACIÓN ORIENTADA A OBJETOS — RESUMEN INTEGRADO
+Basado en el Capítulo 18 del libro oficial "The Rust Programming Language"
+================================================================================
+
+
+1. ¿ES RUST ORIENTADO A OBJETOS?
+---------------------------------
+No existe una definición universal de OOP, y dependiendo de qué criterios se
+usen, Rust puede o no considerarse un lenguaje orientado a objetos. Lo que el
+capítulo propone no es responder esa pregunta de forma definitiva, sino entender
+cómo los conceptos típicos de OOP se mapean (o no) al mundo idiomático de Rust.
+
+
+2. LAS TRES CARACTERÍSTICAS CLÁSICAS DE OOP Y CÓMO LAS MANEJA RUST
+---------------------------------------------------------------------
+
+### Objetos: datos + comportamiento
+
+Según el famoso libro "Design Patterns" (el "Gang of Four"), los programas OOP
+se componen de objetos que empaquetan datos y los procedimientos que operan
+sobre ellos. Bajo esa definición, Rust sí es orientado a objetos: los `struct`
+y `enum` tienen datos, y los bloques `impl` proveen métodos sobre ellos.
+
+### Encapsulamiento
+
+Rust soporta encapsulamiento mediante la palabra clave `pub`: todo es privado
+por defecto, y solo se expone lo que el programador decide. Esto permite cambiar
+los detalles de implementación internos sin afectar al código que usa la API
+pública.
+
+El ejemplo del libro es un `AveragedCollection` que mantiene una lista y su
+promedio en caché. Los campos `list` y `average` son privados; solo se accede a
+ellos a través de métodos públicos `add`, `remove` y `average`. Si el campo
+fuera público, cambiar `Vec<i32>` por `HashSet<i32>` rompería el código externo.
+Gracias al encapsulamiento, ese cambio es transparente.
+
+### Herencia
+
+Rust NO tiene herencia. No hay forma de que un `struct` herede campos o
+implementaciones de otro `struct` directamente. Sin embargo, Rust ofrece
+alternativas según el motivo por el que uno usaría herencia:
+
+  - Para reusar código: los traits pueden tener implementaciones por defecto,
+    similar a cómo un método de una clase padre es heredado por las hijas.
+  - Para polimorfismo de tipos: Rust usa generics con trait bounds (polimorfismo
+    paramétrico acotado) y trait objects (polimorfismo dinámico en tiempo de
+    ejecución).
+
+Rust elige no ofrecer herencia porque esta tiende a compartir más código del
+necesario: las subclases heredan características que quizás no les corresponden,
+lo que hace el diseño menos flexible e introduce la posibilidad de llamar métodos
+inapropiados.
+
+
+3. TRAIT OBJECTS: POLIMORFISMO DINÁMICO EN RUST
+-------------------------------------------------
+Cuando el conjunto de tipos que implementan un comportamiento no se conoce en
+tiempo de compilación (por ejemplo, en una librería extensible), los generics no
+alcanzan: solo permiten un tipo concreto a la vez por instancia. Para eso
+existen los trait objects.
+
+Un trait object se crea especificando un puntero (como `&` o `Box<T>`), la
+keyword `dyn`, y el trait relevante. Por ejemplo: `Box<dyn Draw>`. Rust garantiza
+en tiempo de compilación que cualquier valor usado como trait object implementa
+el trait requerido.
+
+El ejemplo del libro es una librería GUI con un trait `Draw` y una struct
+`Screen` que contiene `Vec<Box<dyn Draw>>`. Al llamar `screen.run()`, se llama
+`draw()` sobre cada componente sin importar su tipo concreto (puede ser un
+`Button`, un `SelectBox`, o cualquier tipo definido por el usuario de la
+librería).
+
+Esto es similar al "duck typing" de los lenguajes dinámicos: si el valor
+responde al mensaje `draw`, nos basta. La diferencia clave con duck typing es
+que Rust lo verifica en tiempo de compilación: si intentamos meter un `String`
+(que no implementa `Draw`) en el vector, el compilador lo rechaza.
+
+### Static dispatch vs. Dynamic dispatch
+
+Con generics, el compilador realiza monomorphization: genera código especializado
+para cada tipo concreto. Eso es static dispatch (despacho estático), resuelto en
+compilación. Con trait objects, Rust usa dynamic dispatch: en tiempo de ejecución
+usa punteros internos del trait object para saber qué método llamar. Esto tiene
+un pequeño costo de performance, y también impide ciertas optimizaciones del
+compilador como el inlining. La flexibilidad extra es el tradeoff.
+
+
+4. PATRONES DE DISEÑO OO EN RUST: EL STATE PATTERN
+----------------------------------------------------
+El capítulo implementa el State Pattern (patrón de estado), uno de los clásicos
+del Gang of Four, como caso de estudio de cómo aplicar patrones OO en Rust y
+cuándo conviene o no hacerlo.
+
+### El problema: un workflow de blog
+
+Se modela un post de blog con tres estados: `Draft` (borrador), `PendingReview`
+(en revisión) y `Published` (publicado). Solo un post publicado devuelve
+contenido; en los otros estados, `content()` retorna cadena vacía. El
+comportamiento del post cambia según su estado interno, pero la interfaz pública
+(`Post`) permanece igual.
+
+### Implementación OO tradicional en Rust
+
+Se define un trait `State` y structs `Draft`, `PendingReview` y `Published` que
+lo implementan. El `Post` guarda un `Box<dyn State>` en un campo privado. Cuando
+se llama `request_review()` o `approve()` en el `Post`, este delega al estado
+actual, que se reemplaza a sí mismo por el siguiente estado. El `Post` no
+necesita saber nada de las reglas de transición: cada estado es responsable de
+su propio comportamiento y de cuándo pasar al siguiente.
+
+Un detalle técnico importante: los métodos de transición reciben `self: Box<Self>`
+en lugar de `&self`, lo que permite tomar ownership del estado actual y
+reemplazarlo. Para poder mover el estado fuera del `Post`, el campo se envuelve
+en `Option` y se usa `.take()`.
+
+Ventajas de esta implementación:
+  - Agregar un nuevo estado solo requiere una nueva struct y su implementación
+    del trait.
+  - No hay `match` gigantes dispersos: la lógica está localizada en cada estado.
+
+Desventajas:
+  - Algunos estados quedan acoplados entre sí (si agrego `Scheduled` entre
+    `PendingReview` y `Published`, debo modificar `PendingReview`).
+  - Hay lógica duplicada en los métodos de transición de `Post`.
+  - No aprovecha las fortalezas únicas de Rust.
+
+### La alternativa idiomática de Rust: estados como tipos
+
+En lugar de encapsular el estado como un trait object interno, se puede codificar
+el estado en el sistema de tipos. Se crean tipos separados: `DraftPost`,
+`PendingReviewPost` y `Post` (publicado). Cada uno tiene solo los métodos que
+corresponden a su estado:
+
+  - `DraftPost` tiene `add_text` y `request_review` pero NO tiene `content`.
+  - `PendingReviewPost` tiene `approve` pero tampoco tiene `content`.
+  - Solo `Post` (publicado) tiene `content`.
+
+El resultado es que usar contenido de un post no publicado es un ERROR DE
+COMPILACIÓN, no un error en tiempo de ejecución. Los estados inválidos se vuelven
+imposibles de representar. Los métodos de transición consumen el tipo anterior
+(toman ownership de `self`) y retornan el siguiente tipo, eliminando cualquier
+posibilidad de tener una instancia "vieja" lingering.
+
+Tradeoff: esta versión ya no sigue tan fielmente el State Pattern clásico (las
+transformaciones no están encapsuladas dentro de `Post`), pero gana garantías de
+correctitud en tiempo de compilación que ningún lenguaje OOP tradicional puede dar.
+
+
+5. CONCLUSIÓN INTEGRADORA
+--------------------------
+El capítulo demuestra que Rust puede implementar los pilares de OOP, pero de
+forma propia:
+
+  Concepto OOP                      | Equivalente en Rust
+  ----------------------------------|--------------------------------------------
+  Objetos (datos + comportamiento)  | struct/enum + impl
+  Encapsulamiento                   | pub / privacidad por defecto
+  Herencia (reusar código)          | Default trait implementations
+  Herencia (polimorfismo)           | Generics + trait bounds / dyn Trait
+  Polimorfismo dinámico             | Box<dyn Trait>, dynamic dispatch
+  Patrones de diseño OO             | Implementables, pero Rust ofrece alternativas
+
+Rust es capaz de implementar patrones orientados a objetos, pero también ofrece
+otros enfoques (como codificar el estado en el sistema de tipos) que pueden ser
+más seguros y expresivos. Los patrones OO no siempre son la mejor solución en
+Rust, especialmente porque Rust tiene características como ownership que los
+lenguajes OO tradicionales no tienen. La clave es conocer ambos caminos y elegir
+el que mejor aprovecha las fortalezas del lenguaje.
+
+================================================================================
+Fuentes: https://doc.rust-lang.org/book/ch18-00-oop.html
+         https://doc.rust-lang.org/book/ch18-01-what-is-oo.html
+         https://doc.rust-lang.org/book/ch18-02-trait-objects.html
+         https://doc.rust-lang.org/book/ch18-03-oo-design-patterns.html
