@@ -1,0 +1,238 @@
+MACROS EN RUST — Resumen
+========================
+Basado en: doc.rust-lang.org/book/ch20-05-macros.html
+
+
+¿QUÉ ES UNA MACRO?
+------------------
+Una macro es código que escribe código. Eso se llama metaprogramación.
+A diferencia de las funciones, las macros actúan en COMPILACIÓN, antes
+de que el programa se ejecute.
+
+Ventajas sobre funciones:
+  - Pueden recibir cantidad variable de argumentos (println! acepta 1 o 10)
+  - Pueden implementar traits, cosa que una función no puede
+  - Pueden generar código que depende del nombre de un tipo
+
+Desventaja: son más difíciles de leer y mantener que las funciones.
+
+
+HAY 4 TIPOS DE MACROS
+----------------------
+
+  1. Declarativas      macro_rules! mi_macro { ... }
+  2. Custom derive     #[derive(MiTrait)]
+  3. Attribute-like    #[mi_atributo]
+  4. Function-like     mi_macro!(...)  pero procedural
+
+
+═══════════════════════════════════════════════════════
+TIPO 1 — MACROS DECLARATIVAS (macro_rules!)
+═══════════════════════════════════════════════════════
+
+Son las más comunes. Funcionan como un match pero en vez de comparar
+valores, comparan la ESTRUCTURA DEL CÓDIGO que les pasás.
+
+Estructura general:
+
+    macro_rules! nombre {
+        ( PATRÓN ) => {
+            CÓDIGO QUE SE GENERA
+        };
+    }
+
+Cuando el compilador ve nombre!(...), reemplaza esa llamada por el
+código del cuerpo. Eso se llama "expansión".
+
+Ejemplo del libro: vec! simplificado
+
+    macro_rules! vec {
+        ( $( $x:expr ),* ) => {
+            {
+                let mut v = Vec::new();
+                $( v.push($x); )*
+                v
+            }
+        };
+    }
+
+Desglose del patrón  ( $( $x:expr ),* ):
+
+    (           paréntesis externo, envuelve todo
+     $(          inicio de la repetición
+       $x:expr   capturá una expresión, llamala $x
+     )           fin de la repetición
+     ,           separadas por coma
+     *           cero o más veces
+    )
+
+Cuando escribís vec![1, 2, 3]:
+  - $x matchea 3 veces: 1, 2, 3
+  - El cuerpo $( v.push($x); )* se expande a:
+        v.push(1);
+        v.push(2);
+        v.push(3);
+
+Variables de macro — siempre empiezan con $:
+    $nombre:expr   cualquier expresión: 1, x+2, "hola"
+    $nombre:ident  un identificador: nombre de variable o función
+    $nombre:ty     un tipo: i32, String, Vec<u8>
+    $nombre:stmt   un statement: let x = 5;
+    $nombre:tt     cualquier token (el más flexible)
+
+Repeticiones:
+    *   cero o más veces
+    +   uno o más veces
+    ?   cero o una vez
+
+Múltiples patrones (brazos):
+    macro_rules! operar {
+        ($a:expr, $b:expr)        => { $a + $b };
+        ($a:expr, $b:expr, $c:expr) => { $a + $b + $c };
+    }
+    El primero que matchee gana, igual que un match.
+
+
+═══════════════════════════════════════════════════════
+TIPO 2 — CUSTOM DERIVE MACROS
+═══════════════════════════════════════════════════════
+
+Permiten escribir #[derive(MiTrait)] en un struct para que el trait
+se implemente automáticamente sin que el usuario escriba el impl.
+
+El problema que resuelven:
+  Rust no tiene reflexión en runtime. No podés preguntarle a un tipo
+  su nombre mientras el programa corre. Solo está disponible en
+  compilación. Una macro procedural puede leerlo en compilación
+  y generar el impl correspondiente.
+
+Sin la macro, el usuario escribe esto para CADA tipo:
+
+    impl HelloMacro for Pancakes {
+        fn hello_macro() {
+            println!("Hello, Macro! My name is Pancakes!");
+        }
+    }
+
+Con la macro, solo escribe:
+
+    #[derive(HelloMacro)]
+    struct Pancakes;
+
+    #[derive(HelloMacro)]
+    struct Waffles;
+
+Y la macro genera el impl automáticamente para cada uno.
+
+Cómo funciona por dentro:
+  La macro es una función que recibe TokenStream y devuelve TokenStream.
+  TokenStream = secuencia de tokens = código Rust en bruto.
+
+    #[proc_macro_derive(HelloMacro)]
+    pub fn hello_macro_derive(input: TokenStream) -> TokenStream {
+        let ast = syn::parse(input).unwrap();  // código → árbol
+        impl_hello_macro(&ast)                 // árbol → código nuevo
+    }
+
+Se usan dos crates del ecosistema:
+  syn   → parsea el TokenStream a una estructura inspeccionable.
+          De ahí sacás el nombre del struct, sus campos, etc.
+  quote → te deja escribir código Rust como template y lo convierte
+          de vuelta a TokenStream.
+
+    fn impl_hello_macro(ast: &syn::DeriveInput) -> TokenStream {
+        let name = &ast.ident;  // "Pancakes"
+        let generated = quote! {
+            impl HelloMacro for #name {
+                fn hello_macro() {
+                    println!("My name is {}!", stringify!(#name));
+                }
+            }
+        };
+        generated.into()
+    }
+
+  #name dentro de quote! se reemplaza por el valor de la variable name.
+  stringify!(#name) convierte el identificador a string en compilación.
+
+Importante: las macros procedurales deben vivir en su propio crate
+separado, con proc-macro = true en Cargo.toml.
+
+
+═══════════════════════════════════════════════════════
+TIPO 3 — ATTRIBUTE-LIKE MACROS
+═══════════════════════════════════════════════════════
+
+Similar a derive, pero más flexible:
+  - Se pueden aplicar a CUALQUIER item: funciones, módulos, structs
+  - Pueden modificar el item completo, no solo agregar código
+
+Ejemplo típico en frameworks web:
+
+    #[route(GET, "/")]
+    fn index() { ... }
+
+La función de la macro recibe DOS TokenStream:
+  - El contenido del atributo: GET, "/"
+  - El item completo: fn index() { ... }
+
+    #[proc_macro_attribute]
+    pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
+        // attr = GET, "/"
+        // item = fn index() { ... }
+        // generás el código que registra la función como handler
+    }
+
+
+═══════════════════════════════════════════════════════
+TIPO 4 — FUNCTION-LIKE MACROS
+═══════════════════════════════════════════════════════
+
+Se ven como macro_rules! (con !) pero son procedurales.
+Son más potentes porque pueden ejecutar cualquier código Rust
+para procesar la entrada, no solo pattern matching.
+
+Caso de uso clásico: validar SQL en compilación.
+
+    let query = sql!(SELECT * FROM users WHERE id = 1);
+
+Si el SQL tiene un error de sintaxis → error en compilación,
+no en runtime cuando ya está en producción.
+
+    #[proc_macro]
+    pub fn sql(input: TokenStream) -> TokenStream {
+        // convertís input a String
+        // lo parseás con un parser SQL real
+        // si hay error → panic! con mensaje útil en compilación
+        // si está bien → generás código que ejecuta la query
+    }
+
+
+═══════════════════════════════════════════════════════
+RESUMEN COMPARATIVO
+═══════════════════════════════════════════════════════
+
+Tipo              Sintaxis de uso        Para qué
+─────────────────────────────────────────────────────────────────
+Declarativa       mi_macro!(...)         Generación simple por patrones
+                  con macro_rules!       Ej: vec!, println!, assert_eq!
+
+Custom derive     #[derive(MiTrait)]     Auto-implementar traits en tipos
+                  en struct o enum       Ej: #[derive(Debug, Clone)]
+
+Attribute-like    #[mi_atributo]         Modificar cualquier item
+                  en cualquier item      Ej: #[route(GET, "/")], #[test]
+
+Function-like     mi_macro!(...)         Como declarativa pero con
+                  procedural             procesamiento arbitrario
+                                         Ej: sql!(...), html!(...)
+
+
+CUÁNDO USAR CADA UNA
+─────────────────────
+  macro_rules!    → shortcuts de sintaxis, repetición, patrones simples
+  Custom derive   → evitar escribir impl repetitivos para múltiples tipos
+  Attribute-like  → cuando necesitás modificar funciones o items con
+                    lógica compleja (frameworks, routers, async runtimes)
+  Function-like   → cuando macro_rules! no alcanza: parsear DSLs,
+                    validar en compilación, generar código muy complejo
