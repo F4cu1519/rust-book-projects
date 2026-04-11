@@ -1,0 +1,1 @@
+C:\Users\facun\Projects\ of\ rust\ book\Proyecto\ Final\part2\target\debug\part2.exe: C:\Users\facun\Projects\ of\ rust\ book\Proyecto\ Final\part2\src\lib.rs C:\Users\facun\Projects\ of\ rust\ book\Proyecto\ Final\part2\src\main.rs
