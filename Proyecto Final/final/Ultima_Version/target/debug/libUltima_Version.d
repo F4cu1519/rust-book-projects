@@ -1,0 +1,1 @@
+C:\Users\facun\Projects\ of\ rust\ book\Proyecto\ Final\final\Ultima_Version\target\debug\libUltima_Version.rlib: C:\Users\facun\Projects\ of\ rust\ book\Proyecto\ Final\final\Ultima_Version\src\lib.rs
